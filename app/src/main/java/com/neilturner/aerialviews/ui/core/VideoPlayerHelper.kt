@@ -24,6 +24,7 @@ import com.neilturner.aerialviews.models.enums.VideoScale
 import com.neilturner.aerialviews.models.music.MusicTrack
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
@@ -202,6 +203,25 @@ object VideoPlayerHelper {
             }
 
             Timber.d("Setting up Immich media source with URI: ${mediaItem.localConfiguration?.uri}")
+            ProgressiveMediaSource
+                .Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+        }
+
+        AerialMediaSource.NCMEMORIES -> {
+            val dataSourceFactory =
+                DefaultHttpDataSource
+                    .Factory()
+                    .setAllowCrossProtocolRedirects(true)
+                    .setConnectTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
+                    .setReadTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
+
+            // If SSL validation is disabled, we need to set the appropriate flags
+            if (!NCMemoriesMediaPrefs.validateSsl) {
+                System.setProperty("javax.net.ssl.trustAll", "true")
+            }
+
+            Timber.d("Setting up Nextcloud Memories media source with URI: ${mediaItem.localConfiguration?.uri}")
             ProgressiveMediaSource
                 .Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)

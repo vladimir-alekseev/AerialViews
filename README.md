@@ -18,7 +18,9 @@ Inspired by Apple TV's beautiful video screensaver!
 
 * 4K Dolby Vision (HDR) videos, if your TV supports it
 * Over 250 videos from Apple, Amazon, Jetson Creative and Robin Fourcade
-* Show videos & photos from USB storage, [Immich server](https://immich.app/), Samba, WebDAV or custom feeds
+* Show videos & photos from USB
+  storage, [Immich server](https://immich.app/), [Nextcloud Memories server](https://memories.gallery/),
+  Samba, WebDAV or custom feeds
 * Place overlays in the corners of the screen such as metadata from videos and photos like location or date taken, clock, music playing, date, countdown timer
 * Message overlay API - Send custom messages to display on your TV from any device on your network (eg. Home Assistant)
 * Alternate the position of overlays to avoid burn-in on QD/OLED TVs
@@ -732,6 +734,15 @@ Supported formats:
 ## Immich Server Setup
 
 Aerial Views supports streaming photos and videos from your self-hosted [Immich](https://immich.app/) server. When setting up API Key authentication in the app, you will need to generate an API key via your Immich web interface under **Account Settings > API Keys**.
+
+## Nextcloud Memories Setup
+
+You can use either user password or app password in Aerial Views. We strongly suggest app password
+for enhanced security.
+
+You can generate an app password via your Nextcloud web interface under **User Menu > Personal
+Settings > Security (tab) > Devices & Sessions (section)**. Just enter any app name (e.g. "Aerial
+Views") and press "Create new app password" button.
 
 ### Required API Permissions
 
