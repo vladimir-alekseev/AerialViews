@@ -33,7 +33,7 @@ class NCMemoriesRepository(
             .create(NCMemoriesApi::class.java)
     }
 
-    suspend fun getSelectedAlbumFromAPI(): Album =
+    suspend fun getSelectedAlbumsFromAPI(): List<Image> =
         coroutineScope {
             try {
                 val selectedAlbumIds = prefs.selectedAlbumIds
@@ -48,14 +48,14 @@ class NCMemoriesRepository(
                 Timber.d("Attempting to fetch ${selectedAlbumIds.size} selected albums")
                 Timber.d("Selected Album IDs: $selectedAlbumIds")
 
-                val allAssets = mutableListOf<Asset>()
+                val allImages = mutableListOf<Image>()
                 val successfulAlbumNames = mutableListOf<String>()
-                val albumNamesByAssetId = mutableMapOf<String, MutableSet<String>>()
+                val albumNamesByImageId = mutableMapOf<String, MutableSet<String>>()
 
                 val albumDeferreds =
                     selectedAlbumIds.map { albumId ->
                         async {
-                            Pair(albumId, client.getAlbum(albumId = albumId))
+                            Pair(albumId, client.getDays(albumId = albumId))
                         }
                     }
 
@@ -66,15 +66,17 @@ class NCMemoriesRepository(
                     val response = albumResponse.second
                     Timber.d("API Request for album $albumId - URL: ${response.raw().request.url}")
 
+                    // TODO: apply album name to each image
+
                     if (response.isSuccessful) {
                         val album = response.body()
                         if (album != null) {
-                            Timber.d("Successfully fetched album: ${album.name}, assets: ${album.assets.size}")
+                            Timber.d("Successfully fetched album: ${album.name}, images: ${album.images.size}")
                             successfulAlbumNames.add(album.name)
-                            val albumAssets = album.assets.map { it.copy(albumName = album.name) }
-                            allAssets.addAll(albumAssets)
-                            albumAssets.forEach { asset ->
-                                albumNamesByAssetId.getOrPut(asset.id) { mutableSetOf() }
+                            val albumImages = album.imagess.map { it.copy(albumName = album.name) }
+                            allImages.addAll(albumImages)
+                            albumImages.forEach { image ->
+                                albumNamesByImageId.getOrPut(image.id) { mutableSetOf() }
                                     .add(album.name)
                             }
                         } else {
@@ -87,38 +89,38 @@ class NCMemoriesRepository(
                     }
                 }
 
-                if (allAssets.isEmpty()) {
-                    throw Exception("No assets found in any of the selected albums")
+                if (allImages.isEmpty()) {
+                    throw Exception("No imagess found in any of the selected albums")
                 }
 
-                // Remove duplicate assets based on ID
+                // Remove duplicate imagess based on ID
                 val successfulAlbumCount = successfulAlbumNames.size
                 val isSingleAlbumSelection = successfulAlbumCount == 1
-                val uniqueAssets =
-                    allAssets
+                val uniqueImages =
+                    allImages
                         .distinctBy { it.id }
-                        .map { asset ->
-                            val albumNames = albumNamesByAssetId[asset.id].orEmpty()
+                        .map { image ->
+                            val albumNames = albumNamesByImageId[image.id].orEmpty()
                             val resolvedAlbumName =
                                 when {
                                     isSingleAlbumSelection -> albumNames.singleOrNull()
                                     albumNames.size == 1 -> albumNames.first()
                                     else -> null
                                 }
-                            asset.copy(albumName = resolvedAlbumName)
+                            image.copy(albumName = resolvedAlbumName)
                         }
                 Timber.d(
-                    "Combined ${allAssets.size} assets from $successfulAlbumCount successful albums " +
-                            "(${selectedAlbumIds.size} selected), ${uniqueAssets.size} unique assets",
+                    "Combined ${allImages.size} images from $successfulAlbumCount successful albums " +
+                            "(${selectedAlbumIds.size} selected), ${uniqueImages.size} unique images",
                 )
 
-                // Return a combined album with all assets
+                // Return a combined album with all images
                 return@coroutineScope Album(
                     id = "combined", // Use a special ID for the combined album
                     name = successfulAlbumNames.joinToString(", "),
                     description = "Combined album from $successfulAlbumCount selected albums",
-                    assetCount = uniqueAssets.size,
-                    assets = uniqueAssets,
+                    count = uniqueImages.size,
+                    images = uniqueImages,
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Exception while fetching selected albums")
@@ -134,103 +136,88 @@ class NCMemoriesRepository(
             else -> null
         }
 
-    suspend fun getFavoriteAssetsFromAPI(): List<Asset> {
+    suspend fun getFavoriteImagesFromAPI(): List<Image> {
         try {
             val count = prefs.includeFavorites.toIntOrNull() ?: return emptyList()
-            Timber.d("Fetching up to $count favorite assets")
+            Timber.d("Fetching up to $count favorite imagess")
             val searchRequest =
-                SearchMetadataRequest(
+                DaysRequest(
                     isFavorite = true,
                     withExif = true,
                     type = getTypeFilter(),
                 )
-            val response = client.getFavoriteAssets(searchRequest = searchRequest)
+            val response = client.getFavoriteImagess(searchRequest = searchRequest)
             if (response.isSuccessful) {
                 val searchResponse = response.body()
-                val allAssets = searchResponse?.assets?.items ?: emptyList()
-                val limitedAssets = allAssets.take(count)
-                Timber.d("Successfully fetched ${limitedAssets.size} favorite assets (from ${allAssets.size} total)")
-                return limitedAssets
+                val allImages = searchResponse?.images?.items ?: emptyList()
+                val limitedImages = allImages.take(count)
+                Timber.d("Successfully fetched ${limitedImages.size} favorite images (from ${allImages.size} total)")
+                return limitedImages
             } else {
                 val errorBody = response.errorBody()?.string()
                 Timber.e("Failed to fetch favorites. Code: ${response.code()}, Error: $errorBody")
-                throw Exception("Failed to fetch favorite assets: ${response.code()} - ${response.message()}")
+                throw Exception("Failed to fetch favorite images: ${response.code()} - ${response.message()}")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Exception while fetching favorite assets")
-            throw Exception("Failed to fetch favorite assets", e)
+            Timber.e(e, "Exception while fetching favorite images")
+            throw Exception("Failed to fetch favorite images", e)
         }
     }
 
-    suspend fun getRecentAssetsFromAPI(): List<Asset> {
+    suspend fun getRecentImagesFromAPI(): List<Image> {
         try {
             val count = prefs.includeRecent.toIntOrNull() ?: return emptyList()
-            Timber.d("Fetching $count recent assets")
+            Timber.d("Fetching $count recent images")
             val searchRequest =
-                SearchMetadataRequest(
+                DaysRequest(
                     size = count,
                     order = "desc",
                     withExif = true,
                     type = getTypeFilter(),
                 )
-            val response = client.getRecentAssets(searchRequest = searchRequest)
+            val response = client.getRecentImages(searchRequest = searchRequest)
             if (response.isSuccessful) {
                 val searchResponse = response.body()
-                val assets = searchResponse?.assets?.items ?: emptyList()
-                Timber.d("Successfully fetched ${assets.size} recent assets")
-                return assets
+                val images = searchResponse?.images?.items ?: emptyList()
+                Timber.d("Successfully fetched ${images.size} recent images")
+                return images
             } else {
                 val errorBody = response.errorBody()?.string()
-                Timber.e("Failed to fetch recent assets. Code: ${response.code()}, Error: $errorBody")
-                throw Exception("Failed to fetch recent assets: ${response.code()} - ${response.message()}")
+                Timber.e("Failed to fetch recent images. Code: ${response.code()}, Error: $errorBody")
+                throw Exception("Failed to fetch recent images: ${response.code()} - ${response.message()}")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Exception while fetching recent assets")
-            throw Exception("Failed to fetch recent assets", e)
+            Timber.e(e, "Exception while fetching recent images")
+            throw Exception("Failed to fetch recent images", e)
         }
     }
 
-    suspend fun fetchAlbums(): Result<List<Album>> =
+    suspend fun fetchAlbumList(): Result<List<Album>> =
         coroutineScope {
             try {
-                val regularDeferred = async { client.getAlbums() }
-                val sharedDeferred = async { client.getAlbums(shared = true) }
+                val albumListQueryDeferred = async { client.getAlbumList() }
 
-                // Fetch regular albums
-                val regularResponse = regularDeferred.await()
-                val regularAlbums =
-                    if (regularResponse.isSuccessful) {
-                        regularResponse.body() ?: emptyList()
+                val response = albumListQueryDeferred.await()
+                val fetchedAlbums =
+                    if (response.isSuccessful) {
+                        response.body() ?: emptyList()
                     } else {
-                        val errorBody = regularResponse.errorBody()?.string() ?: ""
+                        val errorBody = response.errorBody()?.string() ?: ""
                         val errorMessage =
                             try {
                                 Json.decodeFromString<ErrorResponse>(errorBody).message
                             } catch (e: Exception) {
                                 Timber.e(e, "Error parsing error body: $errorBody")
-                                regularResponse.message()
+                                response.message()
                             }
-                        return@coroutineScope Result.failure(Exception("${regularResponse.code()} - $errorMessage"))
+                        return@coroutineScope Result.failure(Exception("${response.code()} - $errorMessage"))
                     }
 
-                // Fetch shared albums
-                val sharedResponse = sharedDeferred.await()
-                val sharedAlbums =
-                    if (sharedResponse.isSuccessful) {
-                        sharedResponse.body() ?: emptyList()
-                    } else {
-                        // If shared albums fetch fails, log warning but continue with regular albums only
-                        Timber.w("Failed to fetch shared albums: ${sharedResponse.code()} - ${sharedResponse.message()}")
-                        emptyList()
-                    }
-
-                // Combine and deduplicate albums by ID
-                val allAlbums = (regularAlbums + sharedAlbums).distinctBy { it.id }
                 Timber.d(
-                    "Fetched ${regularAlbums.size} regular albums and ${sharedAlbums.size} shared albums (${allAlbums.size} total unique)",
+                    "Fetched ${fetchedAlbums.size} albums",
                 )
 
-                Result.success(allAlbums)
+                Result.success(fetchedAlbums)
             } catch (e: Exception) {
                 Result.failure(e)
             }

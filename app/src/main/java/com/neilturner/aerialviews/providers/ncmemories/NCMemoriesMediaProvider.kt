@@ -8,8 +8,8 @@ import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.MediaProvider
 import com.neilturner.aerialviews.providers.ProviderFetchResult
 import com.neilturner.aerialviews.providers.ncmemories.Album
-import com.neilturner.aerialviews.providers.ncmemories.Asset
-import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesAssetMapper
+import com.neilturner.aerialviews.providers.ncmemories.Image
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesImageMapper
 import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesRepository
 import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
 import kotlinx.coroutines.async
@@ -28,11 +28,11 @@ class NCMemoriesMediaProvider(
 
     private val serverUrl by lazy { UrlParser.parseServerUrl(prefs.url) }
     private val urlBuilder = NCMemoriesUrlBuilder(serverUrl, prefs)
-    private val repository = NCMemoriesRepository(prefs, urlBuilder)
-    private val mapper = NCMemoriesAssetMapper(prefs, urlBuilder)
+    private val repository = NCMemoriesRepository(prefs)
+    private val mapper = NCMemoriesImageMapper(prefs, urlBuilder)
 
     override suspend fun fetch(): ProviderFetchResult {
-        val result = fetchNCMemoriesMedia()
+        val result = fetchAllMedia()
         return ProviderFetchResult.Success(media = result.first, summary = result.second)
     }
 
@@ -71,7 +71,7 @@ class NCMemoriesMediaProvider(
         }
     }
 
-    private suspend fun fetchNCMemoriesMedia(): Pair<List<AerialMedia>, String> {
+    private suspend fun fetchAllMedia(): Pair<List<AerialMedia>, String> {
         val media = mutableListOf<AerialMedia>()
 
         // Validate input
@@ -81,25 +81,25 @@ class NCMemoriesMediaProvider(
         }
 
         // Fetch all assets from API
-        val assetResults =
+        val imageResults =
             try {
-                fetchAllAssets()
+                fetchAllImages()
             } catch (e: Exception) {
                 Timber.e(e)
                 return Pair(emptyList(), formatErrorMessage(e))
             }
 
-        // Check if any assets were found
-        if (assetResults.allAssets.isEmpty()) {
+        // Check if any files were found
+        if (imageResults.allImages.isEmpty()) {
             return Pair(media, "No files found")
         }
 
-        // Process assets and create media list
-        val processResults = mapper.processAssets(assetResults.allAssets)
+        // Process images and create media list
+        val processResults = mapper.processImages(imageResults.allImages)
         media.addAll(processResults.media)
 
         // Build summary message
-        val message = buildSummaryMessage(processResults, assetResults)
+        val message = buildSummaryMessage(processResults, imageResults)
 
         Timber.i("Media found: ${media.size}")
         return Pair(media, message)
@@ -110,81 +110,95 @@ class NCMemoriesMediaProvider(
             return "Hostname and port not specified"
         }
 
+        if (prefs.username.isEmpty()) {
+            return "Username not specified"
+        }
+
+        if (prefs.password.isEmpty()) {
+            return "Password not specified"
+        }
+
         return null
     }
 
-    private suspend fun fetchAllAssets(): AssetFetchResults =
+    private data class ImageFetchResults(
+        val allImages: List<Image>,
+        val favoriteCount: Int,
+        val recentCount: Int,
+    )
+
+    private suspend fun fetchAllImages(): ImageFetchResults =
         coroutineScope {
-            // Get primary assets (album or shared link)
-            val primaryAlbum = repository.getSelectedAlbumFromAPI()
+            // Get images from selected albums
+            val selectAlbumsImages = repository.getSelectedAlbumsFromAPI()
 
-            // Filter primary album assets by media type
-            val filteredPrimaryAssets = mapper.filterAssetsByMediaType(primaryAlbum.assets)
+            // Filter album images by media type
+            val filteredAlbumsImages = mapper.filterImagesByMediaType(selectAlbumsImages.assets)
 
-            // Get optional asset sources and filter by media type
-            val favoriteDeferred =
+            // Get optional image sources and filter by media type
+            val favoriteImagesQueryDeferred =
                 async {
                     if (prefs.includeFavorites != "DISABLED") {
                         val rawAssets =
-                            fetchOptionalAssets("favorites") { repository.getFavoriteAssetsFromAPI() }
-                        mapper.filterAssetsByMediaType(rawAssets)
+                            fetchOptionalImages("favorites") { repository.getFavoriteImagesFromAPI() }
+                        mapper.filterImagesByMediaType(rawAssets)
                     } else {
                         emptyList()
                     }
                 }
 
-            val recentDeferred =
+            val recentImagesQueryDeferred =
                 async {
                     if (prefs.includeRecent != "DISABLED") {
                         val rawAssets =
-                            fetchOptionalAssets("recent") { repository.getRecentAssetsFromAPI() }
-                        mapper.filterAssetsByMediaType(rawAssets)
+                            fetchOptionalImages("recent") { repository.getRecentImagesFromAPI() }
+                        mapper.filterImagesByMediaType(rawAssets)
                     } else {
                         emptyList()
                     }
                 }
 
-            val favoriteAssets = favoriteDeferred.await()
-            val recentAssets = recentDeferred.await()
+            val favoriteImages = favoriteImagesQueryDeferred.await()
+            val recentImages = recentImagesQueryDeferred.await()
 
-            // Combine and deduplicate all filtered assets
-            val allAssets =
-                (filteredPrimaryAssets + favoriteAssets + recentAssets)
+            // Combine and deduplicate all filtered images
+            val allImages =
+                (filteredAlbumsImages + favoriteImages + recentImages)
                     .distinctBy { it.id }
 
-            return@coroutineScope AssetFetchResults(
-                allAssets = allAssets,
-                favoriteCount = favoriteAssets.size,
-                recentCount = recentAssets.size,
+            return@coroutineScope ImageFetchResults(
+                allImages = allImages,
+                favoriteCount = favoriteImages.size,
+                recentCount = recentImages.size,
             )
         }
 
-    private suspend fun fetchOptionalAssets(
+    private suspend fun fetchOptionalImages(
         sourceName: String,
         fetchFn: suspend () -> List<Asset>,
     ): List<Asset> =
         try {
             fetchFn()
         } catch (e: Exception) {
-            Timber.w(e, "Failed to fetch $sourceName assets, continuing without them")
+            Timber.w(e, "Failed to fetch $sourceName images, continuing without them")
             emptyList()
         }
 
     private fun buildSummaryMessage(
-        processResults: NCMemoriesAssetMapper.ProcessResults,
-        assetResults: AssetFetchResults,
+        processResults: NCMemoriesImageMapper.ProcessResults,
+        imageResults: ImageFetchResults,
     ): String {
         var message = ""
 
-        // Show total assets fetched from albums
-        message += "Album assets: ${assetResults.allAssets.size}\n"
+        // Show total images fetched from albums
+        message += "Album images: ${imageResults.allImages.size}\n"
 
-        // Add information about different asset sources
-        if (prefs.includeFavorites != "DISABLED" && assetResults.favoriteCount > 0) {
-            message += "Favorite assets: ${assetResults.favoriteCount}\n"
+        // Add information about different image sources
+        if (prefs.includeFavorites != "DISABLED" && imageResults.favoriteCount > 0) {
+            message += "Favorite images: ${imageResults.favoriteCount}\n"
         }
-        if (prefs.includeRecent != "DISABLED" && assetResults.recentCount > 0) {
-            message += "Recent assets: ${assetResults.recentCount}\n"
+        if (prefs.includeRecent != "DISABLED" && imageResults.recentCount > 0) {
+            message += "Recent images: ${imageResults.recentCount}\n"
         }
 
         message += "\nTotal unique media: ${processResults.media.size}"
@@ -192,11 +206,5 @@ class NCMemoriesMediaProvider(
         return message
     }
 
-    private data class AssetFetchResults(
-        val allAssets: List<Asset>,
-        val favoriteCount: Int,
-        val recentCount: Int,
-    )
-
-    suspend fun fetchAlbums(): Result<List<Album>> = repository.fetchAlbums()
+    suspend fun fetchAlbums(): Result<List<Album>> = repository.fetchAlbumList()
 }

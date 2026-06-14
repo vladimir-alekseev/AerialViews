@@ -6,7 +6,7 @@ import com.chibatching.kotpref.enumpref.nullableEnumValuePref
 import com.neilturner.aerialviews.models.enums.NCMemoriesImageType
 import com.neilturner.aerialviews.models.enums.NCMemoriesVideoType
 
-interface NCMemoriesAssetPrefs {
+interface NCMemoriesImagePrefs {
     val includeVideos: Boolean
     val includePhotos: Boolean
 }

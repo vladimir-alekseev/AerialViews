@@ -11,79 +11,70 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface NCMemoriesApi {
-    @GET("/api/albums")
-    suspend fun getAlbums(
-        @Query("shared") shared: Boolean? = null,
-    ): Response<List<Album>>
+    @GET("/apps/memories/api/clusters/albums")
+    suspend fun getAlbumList(): Response<List<Album>>
 
-    @GET("/api/albums/{id}")
-    suspend fun getAlbum(
-        @Path("id") albumId: String,
-    ): Response<Album>
+    @POST("/apps/memories/api/days")
+    suspend fun getDays(
+        @Body searchRequest: DaysRequest,
+    ): Response<List<Day>>
 
-    @POST("/api/search/metadata")
-    suspend fun getFavoriteAssets(
-        @Body searchRequest: SearchMetadataRequest,
-    ): Response<SearchAssetsResponse>
+    @POST("/apps/memories/api/days/{dayid}")
+    suspend fun getDay(
+        @Path("dayid") dayid: Int,
+    ): Response<List<Image>>
 
-    @POST("/api/search/metadata")
-    suspend fun getRecentAssets(
-        @Body searchRequest: SearchMetadataRequest,
-    ): Response<SearchAssetsResponse>
+    @POST("/apps/memories/api/image/info/{fileid}")
+    suspend fun getFullImageInfo(
+        @Path("fileid") fileid: Int,
+    ): Response<Image>
 }
 
 @Serializable
-data class SearchAssetsResponse(
-    val assets: AssetsResult,
-)
-
-@Serializable
-data class AssetsResult(
-    val items: List<Asset>,
-)
-
-@Serializable
-data class SearchMetadataRequest(
-    val isFavorite: Boolean? = null,
-    val order: String? = null,
-    val size: Int? = null,
-    val withExif: Boolean? = null,
-    val type: String? = null,
-)
-
-@Serializable
-data class ExifInfo(
-    val description: String? = null,
-    val country: String? = null,
-    val state: String? = null,
-    val city: String? = null,
-)
-
-@Serializable
-data class Asset(
-    val id: String = "",
-    val type: String = "",
-    val originalPath: String = "",
-    val localDateTime: String? = null,
-    val description: String? = null,
-    val exifInfo: ExifInfo? = null,
-    val albumName: String? = null,
+data class DaysRequest(
+    val fav: Int? = null,
+    val albums: List<String>? = null,
 )
 
 @Serializable
 data class Album(
     @SerialName("id")
-    val id: String = "",
-    @SerialName("albumName")
+    val album_id: Int = 0,
+    val cluster_id: String = "",
+    @SerialName("name")
     val name: String = "",
-    @SerialName("description")
-    val description: String = "",
-    @SerialName("shared")
-    val type: String = "",
-    @SerialName("assets")
-    val assets: List<Asset> = emptyList(),
-    @SerialName("assetCount")
-    val assetCount: Int = 0,
+    @SerialName("count")
+    val count: Int = 0,
+    @SerialName("days")
+    val days: List<Day> = emptyList(),
+)
+
+@Serializable
+data class Day(
+    val dayID: Int = 0,
+    val count: Int = 0,
+    @SerialName("images")
+    val images: List<Image> = emptyList(),
+)
+
+@Serializable
+data class Image(
+    @SerialName("id")
+    val fileid: Int = 0,
+    val etag: String = "",
+    val basename: String = "",
+    val albumName: String = "",
+    val exif: ExifInfo? = null,
+)
+
+@Serializable
+data class ExifInfo(
+    val DateTimeOriginal: String? = null,
+    val OffsetTimeOriginal: String? = null,
+    val GPSLatitude: String? = null,
+    val GPSLongitude: String? = null,
+    val Title: String? = null,
+    val Description: String? = null,
 )
 
 @Serializable

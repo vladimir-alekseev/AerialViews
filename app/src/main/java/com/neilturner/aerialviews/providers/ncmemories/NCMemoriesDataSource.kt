@@ -13,6 +13,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import kotlin.math.min
+import kotlin.io.encoding.Base64
 
 @SuppressLint("UnsafeOptInUsageError")
 class NCMemoriesDataSource : BaseDataSource(true) {
@@ -32,11 +33,16 @@ class NCMemoriesDataSource : BaseDataSource(true) {
 
         transferInitializing(dataSpec)
 
+        val username = NCMemoriesMediaPrefs.username
+        val password = NCMemoriesMediaPrefs.password
+        val authString = Base64.Default.encode("${username}:${password}".encodeToByteArray())
+
         val request =
             Request
                 .Builder()
                 .url(uri.toString())
                 .addHeader("Range", "bytes=${dataSpec.position}-")
+                .addHeader("Authorization", "Basic: ${authString}")
                 .addHeader("OCS-APIRequest", "true")
                 .build()
 

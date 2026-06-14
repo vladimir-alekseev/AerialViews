@@ -225,7 +225,7 @@ class NCMemoriesVideosFragment :
             return
         }
 
-        val albumNames = albums.map { "${it.name} (${it.assetCount} assets)" }.toTypedArray()
+        val albumNames = albums.map { "${it.name} (${it.count} files)" }.toTypedArray()
         val albumIds = albums.map { it.id }.toTypedArray()
         val availableAlbumIds = albumIds.toSet()
         val currentSelectedAlbumIds =

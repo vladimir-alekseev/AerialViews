@@ -65,7 +65,7 @@
             android:key="ncmemories_media_selected_album_ids"
             android:summary="@string/ncmemories_media_select_albums_summary" />
 
-        <!-- Recent Photos -->
+        <!-- Favorite Photos -->
         <ListPreference
             app:dependency="ncmemories_media_enabled"
             app:disableDependentsState="false"

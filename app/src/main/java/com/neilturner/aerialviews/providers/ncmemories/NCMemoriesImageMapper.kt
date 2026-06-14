@@ -3,28 +3,28 @@ package com.neilturner.aerialviews.providers.ncmemories
 import com.neilturner.aerialviews.data.storage.FileHelper
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
 import com.neilturner.aerialviews.models.enums.AerialMediaType
-import com.neilturner.aerialviews.models.prefs.NCMemoriesAssetPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesImagePrefs
 import com.neilturner.aerialviews.models.videos.AerialExifMetadata
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
-import com.neilturner.aerialviews.providers.ncmemories.Asset
+import com.neilturner.aerialviews.providers.ncmemories.Image
 import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
 import timber.log.Timber
 
-class NCMemoriesAssetMapper(
-    private val prefs: NCMemoriesAssetPrefs,
+class NCMemoriesImageMapper(
+    private val prefs: NCMemoriesImagePrefs,
     private val urlBuilder: NCMemoriesUrlBuilder,
 ) {
     data class ProcessResults(
         val media: List<AerialMedia>,
         val excluded: Int,
         val videos: Int,
-        val images: Int,
+        val photos: Int,
     )
 
-    fun filterAssetsByMediaType(assets: List<Asset>): List<Asset> =
-        assets.filter { asset ->
-            val filename = asset.originalPath
+    fun filterImagesByMediaType(images: List<Image>): List<Image> =
+        images.filter { image ->
+            val filename = image.basename
             when {
                 FileHelper.isSupportedVideoType(filename) -> prefs.includeVideos
                 FileHelper.isSupportedImageType(filename) -> prefs.includePhotos
@@ -32,52 +32,52 @@ class NCMemoriesAssetMapper(
             }
         }
 
-    fun processAssets(assets: List<Asset>): ProcessResults {
+    fun processImages(images: List<Image>): ProcessResults {
         val media = mutableListOf<AerialMedia>()
         var excluded = 0
-        var videos = 0
-        var images = 0
+        var videosCount = 0
+        var photosCount = 0
 
-        assets.forEach { asset ->
-            val filename = asset.originalPath
+        images.forEach { image ->
+            val filename = image.basename
             val isVideo = FileHelper.isSupportedVideoType(filename)
             val isImage = FileHelper.isSupportedImageType(filename)
 
             if (isVideo || isImage) {
-                val rawExif = asset.exifInfo
+                val rawExif = image.exif
 
                 Timber.i(
-                    "Nextcloud Memories EXIF: path=%s localDateTime=%s description=%s city=%s state=%s country=%s",
+                    "Nextcloud Memories EXIF: filename=%s DateTimeOriginal=%s Title=%s Description=%s",
                     filename,
-                    asset.localDateTime,
-                    asset.description ?: rawExif?.description,
-                    rawExif?.city,
-                    rawExif?.state,
-                    rawExif?.country,
+                    rawExif?.DateTimeOriginal,
+                    rawExif?.Title,
+                    rawExif?.Description,
                 )
 
-                val exif = extractExifMetadata(asset)
-                val uri = urlBuilder.getAssetUri(asset.id, isVideo)
+                val exif = extractExifMetadata(image)
+                val uri = urlBuilder.getImageUri(image.fileid, isVideo, image.etag)
                 val item =
                     AerialMedia(
                         uri,
                         metadata =
                             AerialMediaMetadata(
-                                albumName = asset.albumName.orEmpty(),
+                                shortDescription = rawExif?.Description,
                                 exif = exif,
+                                albumName = image.albumName.orEmpty(),
+                                title = rawExif?.Title,
                             ),
                     ).apply {
-                        source = AerialMediaSource.IMMICH
+                        source = AerialMediaSource.NCMEMORIES
                         type = if (isVideo) AerialMediaType.VIDEO else AerialMediaType.IMAGE
                     }
 
                 if (isVideo) {
-                    videos++
+                    videosCount++
                     if (prefs.includeVideos) {
                         media.add(item)
                     }
                 } else {
-                    images++
+                    photosCount++
                     if (prefs.includePhotos) {
                         media.add(item)
                     }
@@ -90,20 +90,19 @@ class NCMemoriesAssetMapper(
         return ProcessResults(
             media = media,
             excluded = excluded,
-            videos = videos,
-            images = images,
+            videos = videosCount,
+            photos = photosCount,
         )
     }
 
-    private fun extractExifMetadata(asset: Asset): AerialExifMetadata {
-        val exifInfo = asset.exifInfo
+    private fun extractExifMetadata(image: Image): AerialExifMetadata {
+        val exifInfo = image.exif
         return AerialExifMetadata(
-            date = asset.localDateTime,
-            offset = null,
-            city = exifInfo?.city,
-            state = exifInfo?.state,
-            country = exifInfo?.country,
-            description = asset.description ?: exifInfo?.description,
+            date = exifInfo?.DateTimeOriginal,
+            offset = exifInfo?.OffsetTimeOriginal,
+            latitude = exifInfo?.GPSLatitude,
+            longitude = exifInfo?.GPSLongitude,
+            description = exifInfo?.Description,
         )
     }
 }
