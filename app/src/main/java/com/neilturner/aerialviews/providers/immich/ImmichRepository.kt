@@ -234,7 +234,7 @@ class ImmichRepository(
                                     isSingleAlbumSelection -> albumNames.singleOrNull()
                                     albumNames.size == 1 -> albumNames.first()
                                     else -> null
-                            }
+                                }
                             asset.copy(albumName = resolvedAlbumName)
                         }
                 Timber.d(

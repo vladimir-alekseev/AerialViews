@@ -73,7 +73,7 @@ class MediaPlaylist(
     private fun getItemAt(absoluteIndex: Int): AerialMedia {
         synchronized(windowLock) {
             val relativeIndex = absoluteIndex - windowOffset
-            if (relativeIndex in 0 until windowVideos.size) {
+            if (relativeIndex in windowVideos.indices) {
                 return windowVideos[relativeIndex]
             }
         }
