@@ -61,6 +61,8 @@ object BitmapHelper {
             )
         sanitizeExifDescription(imageDescription)?.let { return it }
 
+        if (!PARSE_USER_COMMENT) return null
+
         val userComment =
             decodeExifText(
                 exif = exif,
@@ -144,6 +146,7 @@ object BitmapHelper {
     private const val MAX_HUMAN_DESCRIPTION_LENGTH = 180
     private const val STRUCTURED_SEPARATOR_COUNT = 5
     private const val MAX_STRUCTURED_FRAGMENT_COUNT = 4
+    private const val PARSE_USER_COMMENT = false
 
     private val VENDOR_METADATA_MARKERS =
         listOf(
