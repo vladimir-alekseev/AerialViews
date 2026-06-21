@@ -270,8 +270,7 @@ class ScreenController(
             playlist = mediaResult.mediaPlaylist
             if (playlist.size > 0) {
                 Timber.i("Playlist size: ${playlist.size}")
-                loadItem(playlist.nextItem())
-                savePlaybackPosition()
+                loadNextItem()
                 scheduleSleepTimer()
             } else {
                 showLoadingError()
@@ -512,15 +511,9 @@ class ScreenController(
                 pauseStartTime = 0
 
                 if (!blackOutMode) {
-                    val media =
-                        if (!previousItem) {
-                            playlist.nextItem()
-                        } else {
-                            playlist.previousItem()
-                        }
+                    val loadPreviousItem = previousItem
                     previousItem = false
-                    loadItem(media)
-                    savePlaybackPosition()
+                    loadNextItem(loadPreviousItem)
                 } else {
                     previousItem = false
                 }
@@ -628,6 +621,17 @@ class ScreenController(
         }
     }
 
+    private fun loadNextItem(previous: Boolean = false) {
+        val media =
+            if (previous) {
+                playlist.previousItem()
+            } else {
+                playlist.nextItem()
+            }
+        loadItem(media)
+        savePlaybackPosition()
+    }
+
     private fun savePlaybackPosition() {
         if (this::playlist.isInitialized && GeneralPrefs.playlistCache) {
             mainScope.launch {
@@ -650,13 +654,10 @@ class ScreenController(
         if (isStopped) return
         isStopped = true
 
-        if (this::playlist.isInitialized) {
-            if (GeneralPrefs.playlistCache) {
-                runBlocking(Dispatchers.IO) {
-                    cacheRepository.saveMediaPosition(playlist.currentPosition)
-                    musicPlayer?.let {
-                        cacheRepository.saveMusicTrackIndex(it.getCurrentTrackIndex())
-                    }
+        if (GeneralPrefs.playlistCache) {
+            runBlocking(Dispatchers.IO) {
+                musicPlayer?.let {
+                    cacheRepository.saveMusicTrackIndex(it.getCurrentTrackIndex())
                 }
             }
         }
@@ -695,7 +696,7 @@ class ScreenController(
             fadeOutCurrentItem()
         } else {
             blackOutMode = false
-            loadItem(playlist.nextItem())
+            loadNextItem()
             // Restart sleep timer if preference still enabled
             scheduleSleepTimer()
         }
@@ -852,7 +853,7 @@ class ScreenController(
         mainScope.launch {
             delay(ERROR_DELAY)
             if (loadingView.isVisible) {
-                loadItem(playlist.nextItem())
+                loadNextItem()
             } else {
                 fadeOutCurrentItem()
             }

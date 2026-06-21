@@ -1,7 +1,9 @@
 package com.neilturner.aerialviews.services
 
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.neilturner.aerialviews.models.music.MusicPlaylist
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
@@ -47,6 +49,7 @@ class MusicPlayer(
         }
     }
 
+    @OptIn(UnstableApi::class)
     fun play() {
         val player =
             player ?: run {

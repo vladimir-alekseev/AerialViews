@@ -121,7 +121,9 @@ class MediaService(
                     useLocalVideos = LocalMediaPrefs.enabled,
                     useSambaVideos = SambaMediaPrefs.enabled || SambaMediaPrefs2.enabled,
                     useWebDavVideos = WebDavMediaPrefs.enabled || WebDavMediaPrefs2.enabled,
-                    webDavPath = "${WebDavMediaPrefs.hostName}|${WebDavMediaPrefs.pathName}|${WebDavMediaPrefs2.hostName}|${WebDavMediaPrefs2.pathName}",
+                    webDavPath =
+                        "${WebDavMediaPrefs.hostName}|${WebDavMediaPrefs.pathName}" +
+                            "|${WebDavMediaPrefs2.hostName}|${WebDavMediaPrefs2.pathName}",
                     useImmichVideos = ImmichMediaPrefs.enabled,
                     immichUrl = ImmichMediaPrefs.url,
                     immichPath = ImmichMediaPrefs.pathName,
