@@ -15,13 +15,23 @@ interface NCMemoriesApi {
     suspend fun getAlbumList(): Response<List<Album>>
 
     @POST("/apps/memories/api/days")
-    suspend fun getDays(
-        @Body searchRequest: DaysRequest,
+    suspend fun getAlbumDays(
+        @Query("albums") albumName: String,
     ): Response<List<Day>>
 
-    @POST("/apps/memories/api/days/{dayid}")
-    suspend fun getDay(
-        @Path("dayid") dayid: Int,
+    @POST("/apps/memories/api/days")
+    suspend fun getFavoriteDays(
+        @Query("fav") fav: Int,
+    ): Response<List<Day>>
+
+    @POST("/apps/memories/api/days")
+    suspend fun getRecentDays(): Response<List<Day>>
+
+    @POST("/apps/memories/api/days/{dayids}")
+    suspend fun getPhotos(
+        @Path("dayids") dayids: String,
+        @Query("albums") albumName: String? = null,
+        @Query("fav") fav: Int? = null,
     ): Response<List<Image>>
 
     @POST("/apps/memories/api/image/info/{fileid}")
@@ -31,40 +41,34 @@ interface NCMemoriesApi {
 }
 
 @Serializable
-data class DaysRequest(
-    val fav: Int? = null,
-    val albums: List<String>? = null,
-)
-
-@Serializable
 data class Album(
-    @SerialName("id")
+    @SerialName("album_id")
     val album_id: Int = 0,
+    @SerialName("cluster_id")
     val cluster_id: String = "",
     @SerialName("name")
     val name: String = "",
     @SerialName("count")
     val count: Int = 0,
-    @SerialName("days")
-    val days: List<Day> = emptyList(),
 )
 
 @Serializable
 data class Day(
+    @SerialName("dayID")
     val dayID: Int = 0,
     val count: Int = 0,
-    @SerialName("images")
-    val images: List<Image> = emptyList(),
 )
 
 @Serializable
 data class Image(
-    @SerialName("id")
+    @SerialName("fileid")
     val fileid: Int = 0,
     val etag: String = "",
+    @SerialName("basename")
     val basename: String = "",
-    val albumName: String = "",
     val exif: ExifInfo? = null,
+    @SerialName("albumName")
+    val albumName: String? = "",
 )
 
 @Serializable

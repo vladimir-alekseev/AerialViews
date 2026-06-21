@@ -735,6 +735,20 @@ Supported formats:
 
 Aerial Views supports streaming photos and videos from your self-hosted [Immich](https://immich.app/) server. When setting up API Key authentication in the app, you will need to generate an API key via your Immich web interface under **Account Settings > API Keys**.
 
+### Required API Permissions
+
+To ensure Aerial Views can successfully query your albums, retrieve media list metadata (for
+favorites, recent, or random filters), and stream your video and photo files, your API key must have
+the following permissions selected:
+
+* **Album:** `album.read` (required to list and retrieve album metadata)
+* **Asset:** `asset.read`, `asset.view`, `asset.download` (required to search and read metadata,
+  load thumbnails/previews, and stream/download original files)
+
+:information_source: If you encounter `403 Forbidden` errors, verification failures, or blank
+screens during playback, double-check that the generated API key has all of these permissions
+active.
+
 ## Nextcloud Memories Setup
 
 You can use either user password or app password in Aerial Views. We strongly suggest app password
@@ -743,15 +757,6 @@ for enhanced security.
 You can generate an app password via your Nextcloud web interface under **User Menu > Personal
 Settings > Security (tab) > Devices & Sessions (section)**. Just enter any app name (e.g. "Aerial
 Views") and press "Create new app password" button.
-
-### Required API Permissions
-
-To ensure Aerial Views can successfully query your albums, retrieve media list metadata (for favorites, recent, or random filters), and stream your video and photo files, your API key must have the following permissions selected:
-
-* **Album:** `album.read` (required to list and retrieve album metadata)
-* **Asset:** `asset.read`, `asset.view`, `asset.download` (required to search and read metadata, load thumbnails/previews, and stream/download original files)
-
-:information_source: If you encounter `403 Forbidden` errors, verification failures, or blank screens during playback, double-check that the generated API key has all of these permissions active.
 
 ## Weather data
 

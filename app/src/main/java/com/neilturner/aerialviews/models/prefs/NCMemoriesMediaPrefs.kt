@@ -18,7 +18,7 @@ interface NCMemoriesUrlPrefs {
     val videoType: NCMemoriesVideoType?
 }
 
-object NCMemoriesMediaPrefs : KotprefModel(), NCMemoriesUrlPrefs, NCMemoriesAssetPrefs {
+object NCMemoriesMediaPrefs : KotprefModel(), NCMemoriesUrlPrefs, NCMemoriesImagePrefs {
     override val kotprefName = "${context.packageName}_preferences"
 
     var enabled by booleanPref(false, "ncmemories_media_enabled")

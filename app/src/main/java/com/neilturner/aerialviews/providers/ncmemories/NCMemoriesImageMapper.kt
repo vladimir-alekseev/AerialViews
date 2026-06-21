@@ -3,7 +3,7 @@ package com.neilturner.aerialviews.providers.ncmemories
 import com.neilturner.aerialviews.data.storage.FileHelper
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
 import com.neilturner.aerialviews.models.enums.AerialMediaType
-import com.neilturner.aerialviews.models.prefs.NCMemoriesImagePrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialExifMetadata
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
@@ -12,7 +12,7 @@ import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
 import timber.log.Timber
 
 class NCMemoriesImageMapper(
-    private val prefs: NCMemoriesImagePrefs,
+    private val prefs: NCMemoriesMediaPrefs,
     private val urlBuilder: NCMemoriesUrlBuilder,
 ) {
     data class ProcessResults(
@@ -61,10 +61,10 @@ class NCMemoriesImageMapper(
                         uri,
                         metadata =
                             AerialMediaMetadata(
-                                shortDescription = rawExif?.Description,
+                                shortDescription = rawExif?.Description.orEmpty(),
                                 exif = exif,
                                 albumName = image.albumName.orEmpty(),
-                                title = rawExif?.Title,
+                                title = rawExif?.Title.orEmpty(),
                             ),
                     ).apply {
                         source = AerialMediaSource.NCMEMORIES
@@ -100,8 +100,8 @@ class NCMemoriesImageMapper(
         return AerialExifMetadata(
             date = exifInfo?.DateTimeOriginal,
             offset = exifInfo?.OffsetTimeOriginal,
-            latitude = exifInfo?.GPSLatitude,
-            longitude = exifInfo?.GPSLongitude,
+            latitude = exifInfo?.GPSLatitude?.toDoubleOrNull(),
+            longitude = exifInfo?.GPSLongitude?.toDoubleOrNull(),
             description = exifInfo?.Description,
         )
     }

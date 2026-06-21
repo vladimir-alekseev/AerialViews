@@ -13,10 +13,11 @@ class NCMemoriesUrlBuilder(
 ) {
 
     fun getImageUri(
-        fileID: String,
+        fileID: Int,
         isVideo: Boolean,
         etag: String,
     ): Uri {
+        val fileIDString = fileID.toString()
         val url: String
         url =
                 // "preview" will use preview-reencoded pic as configured within NCMemories
@@ -24,7 +25,7 @@ class NCMemoriesUrlBuilder(
                 if (prefs.videoType == NCMemoriesVideoType.TRANSCODED) {
                     var client = "aerialviews"
                     var filename = "index.m3u8"
-                    "$server/apps/memories/api/video/transcode/$client/$fileID/$filename"
+                    "$server/apps/memories/api/video/transcode/$client/$fileIDString/$filename"
                 } else {
                     "$server/apps/memories/api/stream/$fileID"
                 }

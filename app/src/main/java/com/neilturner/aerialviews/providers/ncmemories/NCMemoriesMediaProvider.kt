@@ -133,7 +133,7 @@ class NCMemoriesMediaProvider(
             val selectAlbumsImages = repository.getSelectedAlbumsFromAPI()
 
             // Filter album images by media type
-            val filteredAlbumsImages = mapper.filterImagesByMediaType(selectAlbumsImages.assets)
+            val filteredAlbumsImages = mapper.filterImagesByMediaType(selectAlbumsImages)
 
             // Get optional image sources and filter by media type
             val favoriteImagesQueryDeferred =
@@ -164,7 +164,7 @@ class NCMemoriesMediaProvider(
             // Combine and deduplicate all filtered images
             val allImages =
                 (filteredAlbumsImages + favoriteImages + recentImages)
-                    .distinctBy { it.id }
+                    .distinctBy { it.fileid }
 
             return@coroutineScope ImageFetchResults(
                 allImages = allImages,
@@ -175,8 +175,8 @@ class NCMemoriesMediaProvider(
 
     private suspend fun fetchOptionalImages(
         sourceName: String,
-        fetchFn: suspend () -> List<Asset>,
-    ): List<Asset> =
+        fetchFn: suspend () -> List<Image>,
+    ): List<Image> =
         try {
             fetchFn()
         } catch (e: Exception) {
