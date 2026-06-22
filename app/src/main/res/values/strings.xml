@@ -405,6 +405,8 @@
 
     <string name="ncmemories_media_include_favorites_title">Include favorite photos</string>
     <string name="ncmemories_media_include_recent_title">Include recent photos</string>
+    <string name="ncmemories_media_favorites_name">Favorites</string>
+    <string name="ncmemories_media_recent_name">Recent</string>
 
     <string name="ncmemories_media_test_summary1">Files found: %1$s</string>
     <string name="ncmemories_media_test_summary2">Unsupported files: %1$s</string>
@@ -415,7 +417,7 @@
     <string name="ncmemories_media_test_results">Test results</string>
 
     <string name="ncmemories_media_url_title">Server URL</string>
-    <string name="ncmemories_media_url_summary">Enter server URL (e.g., 192.168.1.100:8080)</string>
+    <string name="ncmemories_media_url_summary">Enter server URL (e.g., https://192.168.1.2)</string>
     <string name="ncmemories_media_validate_ssl_title">Validate SSL Certificates</string>
     <string name="ncmemories_media_validate_ssl_summary">Disable only if using self-signed certificates</string>
     <string name="ncmemories_media_url_invalid">Invalid server URL</string>

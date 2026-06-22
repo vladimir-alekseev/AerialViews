@@ -38,6 +38,8 @@ object NCMemoriesMediaPrefs : KotprefModel(), NCMemoriesUrlPrefs, NCMemoriesImag
     val selectedAlbumIds by stringSetPref(emptySet(), "ncmemories_media_selected_album_ids")
     var includeFavorites by stringPref("DISABLED", "ncmemories_media_include_favorites")
     var includeRecent by stringPref("DISABLED", "ncmemories_media_include_recent")
+    val favoritesName by stringPref("Favorites","ncmemories_media_favorites_name")
+    val recentName by stringPref("Recent","ncmemories_media_recent_name")
     override var imageType by nullableEnumValuePref(
         NCMemoriesImageType.PREVIEW,
         "ncmemories_media_image_type"

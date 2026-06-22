@@ -7,11 +7,6 @@ import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.MediaProvider
 import com.neilturner.aerialviews.providers.ProviderFetchResult
-import com.neilturner.aerialviews.providers.ncmemories.Album
-import com.neilturner.aerialviews.providers.ncmemories.Image
-import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesImageMapper
-import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesRepository
-import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import timber.log.Timber
@@ -130,7 +125,7 @@ class NCMemoriesMediaProvider(
     private suspend fun fetchAllImages(): ImageFetchResults =
         coroutineScope {
             // Get images from selected albums
-            val selectAlbumsImages = repository.getSelectedAlbumsFromAPI()
+            val selectAlbumsImages = repository.getSelectedAlbums()
 
             // Filter album images by media type
             val filteredAlbumsImages = mapper.filterImagesByMediaType(selectAlbumsImages)
@@ -139,8 +134,12 @@ class NCMemoriesMediaProvider(
             val favoriteImagesQueryDeferred =
                 async {
                     if (prefs.includeFavorites != "DISABLED") {
+                        val sourceName = prefs.favoritesName
                         val rawAssets =
-                            fetchOptionalImages("favorites") { repository.getFavoriteImagesFromAPI() }
+                            fetchOptionalImages(sourceName) { repository.getOptionalImages(
+                                imageSourceName = sourceName,
+                                count = prefs.includeFavorites.toIntOrNull()
+                            ) }
                         mapper.filterImagesByMediaType(rawAssets)
                     } else {
                         emptyList()
@@ -150,8 +149,12 @@ class NCMemoriesMediaProvider(
             val recentImagesQueryDeferred =
                 async {
                     if (prefs.includeRecent != "DISABLED") {
+                        val sourceName = prefs.recentName
                         val rawAssets =
-                            fetchOptionalImages("recent") { repository.getRecentImagesFromAPI() }
+                            fetchOptionalImages(sourceName) { repository.getOptionalImages(
+                                imageSourceName = sourceName,
+                                count = prefs.includeRecent.toIntOrNull()
+                            ) }
                         mapper.filterImagesByMediaType(rawAssets)
                     } else {
                         emptyList()

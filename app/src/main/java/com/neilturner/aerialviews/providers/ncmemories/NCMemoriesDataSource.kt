@@ -7,6 +7,7 @@ import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.EOFException
@@ -33,16 +34,17 @@ class NCMemoriesDataSource : BaseDataSource(true) {
 
         transferInitializing(dataSpec)
 
-        val username = NCMemoriesMediaPrefs.username
-        val password = NCMemoriesMediaPrefs.password
-        val authString = Base64.Default.encode("${username}:${password}".encodeToByteArray())
+        val credential = Credentials.basic(
+            NCMemoriesMediaPrefs.username,
+            NCMemoriesMediaPrefs.password
+        )
 
         val request =
             Request
                 .Builder()
                 .url(uri.toString())
                 .addHeader("Range", "bytes=${dataSpec.position}-")
-                .addHeader("Authorization", "Basic: ${authString}")
+                .addHeader("Authorization", credential)
                 .addHeader("OCS-APIRequest", "true")
                 .build()
 

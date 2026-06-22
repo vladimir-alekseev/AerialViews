@@ -18,6 +18,7 @@ import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
 import com.neilturner.aerialviews.models.prefs.LocalMediaPrefs
 import com.neilturner.aerialviews.models.prefs.MusicPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs2
 import com.neilturner.aerialviews.models.prefs.WebDavMediaPrefs
@@ -30,6 +31,7 @@ import com.neilturner.aerialviews.providers.LocalMediaProvider
 import com.neilturner.aerialviews.providers.MediaProvider
 import com.neilturner.aerialviews.providers.custom.CustomFeedProvider
 import com.neilturner.aerialviews.providers.immich.ImmichMediaProvider
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesMediaProvider
 import com.neilturner.aerialviews.providers.samba.SambaMediaProvider
 import com.neilturner.aerialviews.providers.webdav.WebDavMediaProvider
 import com.neilturner.aerialviews.services.MediaServiceHelper.addMetadataToManifestVideos
@@ -67,6 +69,9 @@ class MediaService(
         val useImmichVideos: Boolean,
         val immichUrl: String,
         val immichPath: String,
+        val useNCMemoriesVideos: Boolean,
+        val ncmemoriesUrl: String,
+        val ncmemoriesUsername: String,
         val useCustomStreams: Boolean,
         val customUrls: String,
     ) {
@@ -95,6 +100,9 @@ class MediaService(
                     add(useImmichVideos.toString())
                     add(immichUrl)
                     add(immichPath)
+                    add(useNCMemoriesVideos.toString())
+                    add(ncmemoriesUrl)
+                    add(ncmemoriesUsername)
                     add(useCustomStreams.toString())
                     add(customUrls)
                 }
@@ -127,6 +135,9 @@ class MediaService(
                     useImmichVideos = ImmichMediaPrefs.enabled,
                     immichUrl = ImmichMediaPrefs.url,
                     immichPath = ImmichMediaPrefs.pathName,
+                    useNCMemoriesVideos = NCMemoriesMediaPrefs.enabled,
+                    ncmemoriesUrl = NCMemoriesMediaPrefs.url,
+                    ncmemoriesUsername = NCMemoriesMediaPrefs.username,
                     useCustomStreams = CustomFeedPrefs.enabled,
                     customUrls = CustomFeedPrefs.urls,
                 )
@@ -144,6 +155,7 @@ class MediaService(
             providers.add(WebDavMediaProvider(context, WebDavMediaPrefs))
             providers.add(WebDavMediaProvider(context, WebDavMediaPrefs2))
             providers.add(ImmichMediaProvider(context, ImmichMediaPrefs))
+            providers.add(NCMemoriesMediaProvider(context, NCMemoriesMediaPrefs))
             providers.add(AppleMediaProvider(context, AppleVideoPrefs))
             providers.add(CustomFeedProvider(context, CustomFeedPrefs))
         }

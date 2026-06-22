@@ -204,7 +204,13 @@ internal class MetadataResolver(
             "ALBUM_NAME" -> {
                 media.metadata.albumName
                     .trim()
-                    .takeIf { it.isNotBlank() && media.source == AerialMediaSource.IMMICH }
+                    .takeIf {
+                        it.isNotBlank() &&
+                        (
+                            (media.source == AerialMediaSource.IMMICH) ||
+                            (media.source == AerialMediaSource.NCMEMORIES)
+                        )
+                    }
                     ?.let {
                         ResolvedMetadata(
                             text = it,

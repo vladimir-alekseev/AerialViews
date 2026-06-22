@@ -1517,10 +1517,10 @@
     </string-array>
     <string name="overlay_metadata_videos_default" translatable="false">POI</string>
 
-    <string name="overlay_meta_photo_location">Location (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_date">Date taken (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_description">Description (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_album_name">Album Name (Immich)</string>
+    <string name="overlay_meta_photo_location">Location (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_date">Date taken (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_description">Description (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_album_name">Album Name (Immich/NC Memories)</string>
     <string name="overlay_meta_photo_filename">Use filename as-is</string>
     <string name="overlay_meta_photo_folder_filename">Folder &amp; filename</string>
     <string name="overlay_meta_photo_folder_only">Folder name only</string>

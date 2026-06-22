@@ -47,13 +47,13 @@ class NCMemoriesImageMapper(
                 val rawExif = image.exif
 
                 Timber.i(
-                    "Nextcloud Memories EXIF: filename=%s DateTimeOriginal=%s Title=%s Description=%s",
+                    "Nextcloud Memories EXIF: filename=%s DateTimeOriginal=%s Album=%s",
                     filename,
                     rawExif?.DateTimeOriginal,
-                    rawExif?.Title,
-                    rawExif?.Description,
+                    image.albumName,
                 )
 
+                // TODO: file name and file folder should not be extracted from URL
                 val exif = extractExifMetadata(image)
                 val uri = urlBuilder.getImageUri(image.fileid, isVideo, image.etag)
                 val item =
@@ -61,7 +61,6 @@ class NCMemoriesImageMapper(
                         uri,
                         metadata =
                             AerialMediaMetadata(
-                                shortDescription = rawExif?.Description.orEmpty(),
                                 exif = exif,
                                 albumName = image.albumName.orEmpty(),
                                 title = rawExif?.Title.orEmpty(),

@@ -210,7 +210,7 @@ class NCMemoriesVideosFragment :
             DialogHelper.show(
                 requireContext(),
                 "Configuration Required",
-                "Please configure server URL and API key first.",
+                "Please configure server URL, username and password first.",
             )
         }
     }

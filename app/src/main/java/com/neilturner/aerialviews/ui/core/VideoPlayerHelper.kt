@@ -29,6 +29,7 @@ import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
 import com.neilturner.aerialviews.services.philips.CustomRendererFactory
+import okhttp3.Credentials
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
@@ -215,6 +216,19 @@ object VideoPlayerHelper {
                     .setAllowCrossProtocolRedirects(true)
                     .setConnectTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
                     .setReadTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
+
+            // Add necessary headers for Nextcloud Memories
+            val credential = Credentials.basic(
+                NCMemoriesMediaPrefs.username,
+                NCMemoriesMediaPrefs.password
+            )
+            dataSourceFactory.setDefaultRequestProperties(
+                mapOf("Authorization" to credential),
+            )
+
+            dataSourceFactory.setDefaultRequestProperties(
+                mapOf("OCS-APIRequest" to "true"),
+            )
 
             // If SSL validation is disabled, we need to set the appropriate flags
             if (!NCMemoriesMediaPrefs.validateSsl) {

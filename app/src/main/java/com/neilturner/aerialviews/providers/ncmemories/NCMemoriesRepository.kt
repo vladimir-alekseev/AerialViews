@@ -10,16 +10,21 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
+import okhttp3.Credentials
 import retrofit2.Retrofit
 import timber.log.Timber
+import kotlin.collections.joinToString
 
 class NCMemoriesRepository(
     private val prefs: NCMemoriesMediaPrefs,
 ) {
     lateinit var server: String
+    lateinit var credential: String
 
     private val client by lazy {
         server = UrlParser.parseServerUrl(prefs.url)
+        credential = Credentials.basic(prefs.username, prefs.password)
+
         val serverConfig = ServerConfig(server, prefs.validateSsl)
         val okHttpClient = SslHelper().createOkHttpClient(serverConfig)
         Timber.i("Connecting to $server")
@@ -33,225 +38,255 @@ class NCMemoriesRepository(
             .create(NCMemoriesApi::class.java)
     }
 
-    suspend fun getSelectedAlbumsFromAPI(): List<Image> =
+    suspend fun getSelectedAlbums(): List<Image> =
         coroutineScope {
             try {
-                return@coroutineScope emptyList()
-//                val selectedAlbumIds = prefs.selectedAlbumIds
-//                if (selectedAlbumIds.isEmpty()) {
-//                    return@coroutineScope Album(
-//                        album_id = 0, // Use a special ID for the combined album
-//                        name = "",
-//                    )
-//                }
-//
-//                Timber.d("Attempting to fetch ${selectedAlbumIds.size} selected albums")
-//                Timber.d("Selected Album IDs: $selectedAlbumIds")
-//
-//                val allImages = mutableListOf<Image>()
-//                val successfulAlbumNames = mutableListOf<String>()
-//                val albumNamesByImageId = mutableMapOf<String, MutableSet<String>>()
-//
-//                val albumDeferreds =
-//                    selectedAlbumIds.map { albumId ->
-//                        async {
-//                            Pair(albumId, client.getDays(albumId = albumId))
-//                        }
-//                    }
-//
-//                val albumResponses = albumDeferreds.awaitAll()
-//
-//                for (albumResponse in albumResponses) {
-//                    val albumId = albumResponse.first
-//                    val response = albumResponse.second
-//                    Timber.d("API Request for album $albumId - URL: ${response.raw().request.url}")
-//
-//                    if (response.isSuccessful) {
-//                        val album = response.body()
-//                        if (album != null) {
-//                            Timber.d("Successfully fetched album: ${album.name}, images: ${album.images.size}")
-//                            successfulAlbumNames.add(album.name)
-//                            val albumImages = album.images.map { it.copy(albumName = album.name) }
-//                            allImages.addAll(albumImages)
-//                            albumImages.forEach { image ->
-//                                albumNamesByImageId.getOrPut(image.id) { mutableSetOf() }
-//                                    .add(album.name)
-//                            }
-//                        } else {
-//                            Timber.e("Received null album from successful response for album ID: $albumId")
-//                        }
-//                    } else {
-//                        val errorBody = response.errorBody()?.string()
-//                        Timber.e("Failed to fetch album $albumId. Code: ${response.code()}, Error: $errorBody")
-//                        // Continue with other albums instead of failing completely
-//                    }
-//                }
-//
-//                if (allImages.isEmpty()) {
-//                    throw Exception("No images found in any of the selected albums")
-//                }
-//
-//                // Remove duplicate images based on ID
-//                val successfulAlbumCount = successfulAlbumNames.size
-//                val isSingleAlbumSelection = successfulAlbumCount == 1
-//                val uniqueImages =
-//                    allImages
-//                        .distinctBy { it.id }
-//                        .map { image ->
-//                            val albumNames = albumNamesByImageId[image.id].orEmpty()
-//                            val resolvedAlbumName =
-//                                when {
-//                                    isSingleAlbumSelection -> albumNames.singleOrNull()
-//                                    albumNames.size == 1 -> albumNames.first()
-//                                    else -> null
-//                                }
-//                            image.copy(albumName = resolvedAlbumName)
-//                        }
-//                Timber.d(
-//                    "Combined ${allImages.size} images from $successfulAlbumCount successful albums " +
-//                            "(${selectedAlbumIds.size} selected), ${uniqueImages.size} unique images",
-//                )
-//
-//                // Return a combined album with all images
-//                return@coroutineScope Album(
-//                    id = 0, // Use a special ID for the combined album
-//                    name = successfulAlbumNames.joinToString(", "),
-//                    count = uniqueImages.size,
-//                    images = uniqueImages,
-//                )
+                val selectedAlbumIds = prefs.selectedAlbumIds
+                if (selectedAlbumIds.isEmpty()) {
+                    return@coroutineScope emptyList()
+                }
+
+                Timber.d("Attempting to fetch ${selectedAlbumIds.size} selected albums")
+
+                // Fetch cluster names for further days querying
+                val selectedAlbumsNames = fetchClusterNames(selectedAlbumIds)
+
+                // Prepare days query for every selected album
+                val albumDaysResponsesDeferred =
+                    selectedAlbumsNames.map { album ->
+                        async {
+                            Pair(
+                                album,
+                                client.getDays(
+                                    credential = credential,
+                                    cluster_id = album.cluster_id,
+                                )
+                            )
+                        }
+                    }
+                val albumDaysResponses = albumDaysResponsesDeferred.awaitAll()
+
+                // Filter successful album responses
+                val albumDaysSuccess = albumDaysResponses.filter { it.second.isSuccessful }
+                if (albumDaysSuccess.size != albumDaysResponses.size) {
+                    Timber.e("Failed to fetch days for all selected albums")
+                    // Continue with successful albums
+                }
+
+                // Prepare images subquery for every selected album
+                val albumImagesResponsesDeferred =
+                    albumDaysSuccess.map { albumDaysResponse ->
+                        async {
+                            Pair(
+                                albumDaysResponse.first.name,
+                                client.getImages(
+                                    credential = credential,
+                                    cluster_id = albumDaysResponse.first.cluster_id,
+                                    dayids = albumDaysResponse.second.body()?.map { it.dayid }
+                                        ?.joinToString(",") ?: "",
+                                )
+                            )
+                        }
+                    }
+                val albumImagesResponses = albumImagesResponsesDeferred.awaitAll()
+
+                // Collect all unique images to single list
+                val allImages = mutableListOf<Image>()
+
+                val albumsWithImages = mutableListOf<String>()
+                val albumNamesByImageId = mutableMapOf<Int, MutableSet<String>>()
+
+                for (albumImagesResponse in albumImagesResponses) {
+                    val albumName = albumImagesResponse.first
+                    val response = albumImagesResponse.second
+                    Timber.d("Completed API request for album $albumName - URL: ${response.raw().request.url}")
+
+                    if (response.isSuccessful) {
+                        val albumImages = response.body()
+                        if (albumImages != null) {
+                            Timber.d("Successfully fetched album: ${albumName}, images: ${albumImages.size}")
+                            // Count completed albums
+                            albumsWithImages.add(albumName)
+
+                            // Add album images to single list
+                            allImages.addAll(albumImages.map { it.copy(albumName = albumName) })
+
+                            // Save album name for image ID lookup
+                            albumImages.forEach { image ->
+                                albumNamesByImageId.getOrPut(image.fileid) { mutableSetOf() }
+                                    .add(albumName)
+                            }
+                        } else {
+                            Timber.e("Received empty image list from successful days response for album: $albumName")
+                        }
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Timber.e("Failed to fetch images in $albumName. Code: ${response.code()}, Error: $errorBody")
+                        // Continue with other albums instead of failing completely
+                    }
+                }
+
+                if (allImages.isEmpty()) {
+                    throw Exception("No images found in any of the selected albums")
+                }
+
+                // Remove duplicate images based on image ID
+                val fullAlbumsCount = albumsWithImages.size
+                val isSingleAlbumSelection = (fullAlbumsCount == 1) // Shortcut for single album for all images
+
+                val uniqueImages =
+                    allImages
+                        .distinctBy { it.fileid }
+                        .map { image ->
+                            // Album name lookup for remaining unique images
+                            val albumNamesLookup = albumNamesByImageId[image.fileid].orEmpty()
+                            val resolvedAlbumName =
+                                when {
+                                    isSingleAlbumSelection -> albumNamesLookup.singleOrNull()
+                                    albumNamesLookup.size == 1 -> albumNamesLookup.first()
+                                    else -> null
+                                }
+                            image.copy(albumName = resolvedAlbumName)
+                        }
+                Timber.d(
+                    "Combined ${allImages.size} images from $fullAlbumsCount found albums " +
+                            "(${selectedAlbumIds.size} selected): ${uniqueImages.size} unique images remain",
+                )
+
+                // Return a combined album with unique images
+                return@coroutineScope uniqueImages
             } catch (e: Exception) {
                 Timber.e(e, "Exception while fetching selected albums")
                 throw Exception("Failed to fetch selected albums", e)
             }
         }
 
-    private fun getTypeFilter(): String? =
+    // TODO: apply video filter where appropriate
+    // TODO: fix video playback
+    private fun getTypeFilter(): Int? =
         when (prefs.mediaType) {
-            ProviderMediaType.VIDEOS -> "VIDEO"
-            ProviderMediaType.PHOTOS -> "IMAGE"
+            ProviderMediaType.VIDEOS -> 1
+            ProviderMediaType.PHOTOS -> null
             ProviderMediaType.VIDEOS_PHOTOS -> null
             else -> null
         }
 
-    suspend fun getFavoriteImagesFromAPI(): List<Image> =
+    suspend fun getOptionalImages(imageSourceName: String, count: Int?): List<Image> =
         coroutineScope {
             try {
-                val count =
-                    prefs.includeFavorites.toIntOrNull() ?: return@coroutineScope emptyList()
-                Timber.d("Fetching up to $count favorite images")
+                count ?: return@coroutineScope emptyList()
+                Timber.d("Fetching $count $imageSourceName images")
 
-                val favoriteDaysResponse = client.getFavoriteDays(fav = 1)
-                if (favoriteDaysResponse.isSuccessful) {
-                    // fetch days for favorite images
-                    val allDays = favoriteDaysResponse.body() ?: emptyList()
+                // define header value for favorites
+                val fav = when(imageSourceName) {
+                    prefs.favoritesName -> 1
+                    else -> null
+                }
+
+                // fetch days for image source
+                val daysResponseDeferred = async {
+                    client.getDays(
+                        credential = credential,
+                        fav = fav
+                    )
+                }
+
+                val daysResponse = daysResponseDeferred.await()
+                if (daysResponse.isSuccessful) {
+                    val allDays = daysResponse.body() ?: emptyList()
 
                     if (allDays.isEmpty()) {
-                        throw Exception("No days found in favorites")
+                        throw Exception("No days found in $imageSourceName")
                     }
 
                     // fetch images from days
-                    Timber.d("Attempting to fetch ${allDays.size} favorite days")
+                    Timber.d("Attempting to fetch ${allDays.size} $imageSourceName days")
 
-                    val dayids = mutableListOf<Int>()
-                    allDays.forEach { day ->
-                        dayids.add(day.dayID)
+                    val allImagesResponseDeferred = async {
+                        client.getImages(
+                            credential = credential,
+                            dayids = allDays.map { it.dayid }.joinToString(","),
+                            fav = fav
+                        )
                     }
 
-                    val allImagesResponse =
-                        client.getPhotos(dayids = dayids.joinToString(","), fav = 1)
+                    val allImagesResponse = allImagesResponseDeferred.await()
                     if (allImagesResponse.isSuccessful) {
                         val allImages = allImagesResponse.body() ?: emptyList()
 
                         if (allImages.isEmpty()) {
-                            throw Exception("No images found in favorites")
+                            throw Exception("No images found in $imageSourceName")
                         }
 
                         val limitedImages = allImages.take(count)
 
                         // fetch image info
-                        val currentAlbumName = "Favorites"
+                        val limitedImagesFull = fetchExifInfo(limitedImages, imageSourceName)
 
-                        val limitedImagesFull = mutableListOf<Image>()
-
-                        val imageInfoDeferreds =
-                            limitedImages.map { image ->
-                                async {
-                                    Pair(
-                                        image.fileid,
-                                        client.getFullImageInfo(fileid = image.fileid)
-                                    )
-                                }
-                            }
-
-                        val imageInfoResponses = imageInfoDeferreds.awaitAll()
-
-                        for (imageInfoResponsePair in imageInfoResponses) {
-                            val imageId = imageInfoResponsePair.first
-                            val imageInfoResponse = imageInfoResponsePair.second
-                            Timber.d("API Request for image $imageId - URL: ${imageInfoResponse.raw().request.url}")
-
-                            if (imageInfoResponse.isSuccessful) {
-                                val fullInfo = imageInfoResponse.body()
-                                if (fullInfo != null) {
-                                    Timber.d("Successfully fetched image: ${fullInfo.basename}")
-
-                                    // Apply album name to each image
-                                    limitedImagesFull.add(fullInfo.copy(albumName = currentAlbumName))
-                                } else {
-                                    Timber.e("Received null image from successful response for image ID: $imageId")
-                                }
-                            } else {
-                                val errorBody = imageInfoResponse.errorBody()?.string()
-                                Timber.e("Failed to fetch image info $imageId. Code: ${imageInfoResponse.code()}, Error: $errorBody")
-                                // Continue with other images
-                            }
-                        }
-
-                        Timber.d("Successfully fetched ${limitedImagesFull.size} favorite images (from ${allImages.size} total)")
+                        Timber.d("Successfully fetched ${limitedImagesFull.size} $imageSourceName images (from ${allImages.size} total)")
                         return@coroutineScope limitedImagesFull
-
                     } else {
                         val errorBody = allImagesResponse.errorBody()?.string()
-                        Timber.e("Failed to fetch favorite images. Code: ${allImagesResponse.code()}, Error: $errorBody")
-                        throw Exception("Failed to fetch favorite images: ${allImagesResponse.code()} - ${allImagesResponse.message()}")
+                        Timber.e("Failed to fetch $imageSourceName images from days. Code: ${allImagesResponse.code()}, Error: $errorBody")
+                        throw Exception("Failed to fetch $imageSourceName images from days: ${allImagesResponse.code()} - ${allImagesResponse.message()}")
                     }
                 } else {
-                    val errorBody = favoriteDaysResponse.errorBody()?.string()
-                    Timber.e("Failed to fetch favorites days. Code: ${favoriteDaysResponse.code()}, Error: $errorBody")
-                    throw Exception("Failed to fetch favorite days: ${favoriteDaysResponse.code()} - ${favoriteDaysResponse.message()}")
+                    val errorBody = daysResponse.errorBody()?.string()
+                    Timber.e("Failed to fetch $imageSourceName days. Code: ${daysResponse.code()}, Error: $errorBody")
+                    throw Exception("Failed to fetch $imageSourceName days: ${daysResponse.code()} - ${daysResponse.message()}")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Exception while fetching favorite images")
-                throw Exception("Failed to fetch favorite images", e)
+                Timber.e(e, "Exception while fetching $imageSourceName images")
+                throw Exception("Failed to fetch $imageSourceName images", e)
             }
         }
 
-    suspend fun getRecentImagesFromAPI(): List<Image> {
-        try {
-            return emptyList()
-//            val count = prefs.includeRecent.toIntOrNull() ?: return emptyList()
-//            Timber.d("Fetching $count recent images")
-//            val response = client.getRecentDays()
-//            if (response.isSuccessful) {
-//                val searchResponse = response.body()
-//                val images = searchResponse?.images?.items ?: emptyList()
-//                Timber.d("Successfully fetched ${images.size} recent images")
-//                return images
-//            } else {
-//                val errorBody = response.errorBody()?.string()
-//                Timber.e("Failed to fetch recent images. Code: ${response.code()}, Error: $errorBody")
-//                throw Exception("Failed to fetch recent images: ${response.code()} - ${response.message()}")
-//            }
-        } catch (e: Exception) {
-            Timber.e(e, "Exception while fetching recent images")
-            throw Exception("Failed to fetch recent images", e)
-        }
-    }
+    private suspend fun fetchExifInfo(images: List<Image>, albumName: String): List<Image> =
+        coroutineScope {
+            val imagesFull = mutableListOf<Image>()
 
+            val imageInfoDeferreds =
+                images.map { image ->
+                    async {
+                        Pair(
+                            image.fileid,
+                            client.getFullImageInfo(
+                                credential = credential,
+                                fileid = image.fileid
+                            )
+                        )
+                    }
+                }
+
+            val imageInfoResponses = imageInfoDeferreds.awaitAll()
+
+            for (imageInfoResponsePair in imageInfoResponses) {
+                val imageId = imageInfoResponsePair.first
+                val imageInfoResponse = imageInfoResponsePair.second
+                Timber.d("API Request for image $imageId - URL: ${imageInfoResponse.raw().request.url}")
+
+                if (imageInfoResponse.isSuccessful) {
+                    val fullInfo = imageInfoResponse.body()
+                    if (fullInfo != null) {
+                        Timber.d("Successfully fetched image EXIF: ${fullInfo.basename}")
+
+                        // Apply album name to each image
+                        imagesFull.add(fullInfo.copy(albumName = albumName))
+                    } else {
+                        Timber.e("Received null image from successful response for image ID: $imageId")
+                    }
+                } else {
+                    val errorBody = imageInfoResponse.errorBody()?.string()
+                    Timber.e("Failed to fetch image info $imageId. Code: ${imageInfoResponse.code()}, Error: $errorBody")
+                    // Continue with other images
+                }
+            }
+            return@coroutineScope imagesFull
+        }
     suspend fun fetchAlbumList(): Result<List<Album>> =
         coroutineScope {
             try {
-                val albumListQueryDeferred = async { client.getAlbumList() }
+                val albumListQueryDeferred = async { client.getAlbumList(credential) }
 
                 val response = albumListQueryDeferred.await()
                 val fetchedAlbums =
@@ -276,6 +311,31 @@ class NCMemoriesRepository(
                 Result.success(fetchedAlbums)
             } catch (e: Exception) {
                 Result.failure(e)
+            }
+        }
+
+    suspend fun fetchClusterNames(selectedAlbumIDs: MutableSet<String>): List<Album> =
+        coroutineScope {
+            try {
+                val albumListQueryDeferred = async { client.getAlbumList(credential) }
+
+                val albumListQuery = albumListQueryDeferred.await()
+                if (albumListQuery.isSuccessful) {
+                    val serverAlbumList = albumListQuery.body() ?: emptyList()
+                    val selectedAlbumList = if (!serverAlbumList.isEmpty()) {
+                            serverAlbumList.filter { it.album_id.toString() in selectedAlbumIDs }
+                        } else {
+                            emptyList()
+                        }
+                    return@coroutineScope selectedAlbumList
+                } else {
+                    val errorBody = albumListQuery.errorBody()?.string()
+                    Timber.e("Failed to fetch album list. Code: ${albumListQuery.code()}, Error: $errorBody")
+                    throw Exception("Failed to fetch album list: ${albumListQuery.code()} - ${albumListQuery.message()}")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Exception while fetching cluster names for albums")
+                throw Exception("Failed to fetch cluster names for albums", e)
             }
         }
 }

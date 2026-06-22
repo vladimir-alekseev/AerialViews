@@ -22,9 +22,11 @@ import com.neilturner.aerialviews.data.network.SslHelper
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
 import com.neilturner.aerialviews.models.enums.ImmichAuthType
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.utils.FirebaseHelper
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
+import okhttp3.Credentials
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -43,16 +45,34 @@ internal object ImagePlayerHelper {
             GifDecoder.Factory()
         }
 
-    fun buildOkHttpClient(): OkHttpClient {
-        val serverConfig = ServerConfig("", ImmichMediaPrefs.validateSsl)
+    fun buildOkHttpClient(
+        validateSsl: Boolean = true,
+        source: AerialMediaSource? = null
+    ): OkHttpClient {
+        val serverConfig = ServerConfig("", validateSsl)
         val okHttpClient = SslHelper().createOkHttpClient(serverConfig)
+        // TODO: don't add X-API-Key header if not using Immich (here and everywhere else)
         return okHttpClient
             .newBuilder()
-            .addInterceptor(ApiKeyInterceptor())
+            .also { builder ->
+                when (source) {
+                    AerialMediaSource.IMMICH -> {
+                        builder.addInterceptor(ImmichApiKeyInterceptor())
+                    }
+
+                    AerialMediaSource.NCMEMORIES -> {
+                        builder.addInterceptor(NCMemoriesAuthInterceptor())
+                    }
+
+                    else -> {
+                        // no additional headers
+                    }
+                }
+            }
             .build()
     }
 
-    internal class ApiKeyInterceptor : Interceptor {
+    internal class ImmichApiKeyInterceptor : Interceptor {
         override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
             val originalRequest = chain.request()
             val newRequest =
@@ -69,6 +89,32 @@ internal object ImagePlayerHelper {
                         Timber.d("NOT Adding X-API-Key header")
                         originalRequest
                     }
+                }
+            return chain.proceed(newRequest)
+        }
+    }
+
+    internal class NCMemoriesAuthInterceptor : Interceptor {
+        override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
+            val originalRequest = chain.request()
+            val newRequest =
+                if (NCMemoriesMediaPrefs.enabled) {
+                    Timber.d("Adding Nextcloud Memories headers")
+
+                    val credential = Credentials.basic(
+                        NCMemoriesMediaPrefs.username,
+                        NCMemoriesMediaPrefs.password
+                    )
+
+                    originalRequest
+                        .newBuilder()
+                        .addHeader("Authorization", credential)
+                        .addHeader("OCS-APIRequest", "true")
+                        .build()
+                }
+                else {
+                    Timber.d("Skipping Nextcloud Memories request headers")
+                    originalRequest
                 }
             return chain.proceed(newRequest)
         }
@@ -124,7 +170,10 @@ internal object ImagePlayerHelper {
 
     fun streamFromImmichFile(uri: Uri): InputStream? =
         try {
-            val client = buildOkHttpClient()
+            val client = buildOkHttpClient(
+                validateSsl = ImmichMediaPrefs.validateSsl,
+                source = AerialMediaSource.IMMICH
+            )
             val request = Request.Builder().url(uri.toString()).build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
@@ -139,6 +188,30 @@ internal object ImagePlayerHelper {
             }
         } catch (ex: Exception) {
             Timber.e(ex, "Exception while opening Immich file: ${ex.message}")
+            FirebaseHelper.crashlyticsException(ex)
+            null
+        }
+
+    fun streamFromNCMemoriesFile(uri: Uri): InputStream? =
+        try {
+            val client = buildOkHttpClient(
+                validateSsl = NCMemoriesMediaPrefs.validateSsl,
+                source = AerialMediaSource.NCMEMORIES
+            )
+            val request = Request.Builder().url(uri.toString()).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                response.close()
+                return null
+            }
+            val responseBody = response.body
+            object : FilterInputStream(responseBody.byteStream()) {
+                override fun close() {
+                    response.use { super.close() }
+                }
+            }
+        } catch (ex: Exception) {
+            Timber.e(ex, "Exception while opening Nextcloud Memories file: ${ex.message}")
             FirebaseHelper.crashlyticsException(ex)
             null
         }
@@ -231,6 +304,7 @@ internal object ImagePlayerHelper {
             AerialMediaSource.SAMBA -> streamFromSambaFile(media.uri)
             AerialMediaSource.WEBDAV -> streamFromWebDavFile(media.uri)
             AerialMediaSource.IMMICH -> streamFromImmichFile(media.uri)
+            AerialMediaSource.NCMEMORIES -> streamFromNCMemoriesFile(media.uri)
             else -> streamFromLocalFile(context, media.uri)
         }
 }
