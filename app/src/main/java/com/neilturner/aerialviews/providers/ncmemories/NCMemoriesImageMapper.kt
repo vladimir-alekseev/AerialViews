@@ -9,7 +9,9 @@ import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
 import com.neilturner.aerialviews.providers.ncmemories.Image
 import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
+import com.neilturner.aerialviews.utils.toStringOrEmpty
 import timber.log.Timber
+import kotlin.time.Instant
 
 class NCMemoriesImageMapper(
     private val prefs: NCMemoriesMediaPrefs,
@@ -45,17 +47,14 @@ class NCMemoriesImageMapper(
 
             if (isVideo || isImage) {
                 val rawExif = image.exif
-
-                Timber.i(
-                    "Nextcloud Memories EXIF: filename=%s DateTimeOriginal=%s Album=%s",
-                    filename,
-                    rawExif?.DateTimeOriginal,
-                    image.albumName,
-                )
-
-                // TODO: file name and file folder should not be extracted from URL
                 val exif = extractExifMetadata(image)
+
                 val uri = urlBuilder.getImageUri(image.fileid, isVideo, image.etag)
+                Timber.i(
+                    "Immich EXIF: basename=%s album=%s",
+                    filename,
+                    image.albumName.orEmpty(),
+                )
                 val item =
                     AerialMedia(
                         uri,
@@ -64,6 +63,7 @@ class NCMemoriesImageMapper(
                                 exif = exif,
                                 albumName = image.albumName.orEmpty(),
                                 title = rawExif?.Title.orEmpty(),
+                                shortDescription = image.filename.orEmpty(),
                             ),
                     ).apply {
                         source = AerialMediaSource.NCMEMORIES
@@ -96,12 +96,16 @@ class NCMemoriesImageMapper(
 
     private fun extractExifMetadata(image: Image): AerialExifMetadata {
         val exifInfo = image.exif
+        val imageEpoch = image.epoch ?: exifInfo?.DateTimeEpoch
+
         return AerialExifMetadata(
-            date = exifInfo?.DateTimeOriginal,
+            date = imageEpoch?.let { Instant.fromEpochSeconds(it) }.toString(),
             offset = exifInfo?.OffsetTimeOriginal,
             latitude = exifInfo?.GPSLatitude?.toDoubleOrNull(),
             longitude = exifInfo?.GPSLongitude?.toDoubleOrNull(),
             description = exifInfo?.Description,
         )
     }
+
+
 }

@@ -221,44 +221,82 @@ internal class MetadataResolver(
             }
 
             "FILENAME" -> {
-                media.uri.filenameWithoutExtension
-                    .trim()
-                    .takeIf { it.isNotBlank() }
-                    ?.let {
-                        ResolvedMetadata(
-                            text = it,
-                            poi = emptyMap(),
-                            metadataType = MetadataType.STATIC,
-                        )
+                when (media.source) {
+                    AerialMediaSource.NCMEMORIES -> {
+                        // original filename is stored in short description, not URI
+                        FileHelper.extractFilenameFromPath(media.metadata.shortDescription)
                     }
+                    else -> {
+                        media.uri.filenameWithoutExtension
+                    }
+                }
+                .trim()
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    ResolvedMetadata(
+                        text = it,
+                        poi = emptyMap(),
+                        metadataType = MetadataType.STATIC,
+                    )
+                }
             }
 
             "FOLDER_FILENAME" -> {
-                FileHelper
-                    .formatFolderAndFilenameFromUri(media.uri, includeFilename = true, pathDepth = folderDepth)
-                    .trim()
-                    .takeIf { it.isNotBlank() }
-                    ?.let {
-                        ResolvedMetadata(
-                            text = it,
-                            poi = emptyMap(),
-                            metadataType = MetadataType.STATIC,
+                when (media.source) {
+                    AerialMediaSource.NCMEMORIES -> {
+                        // original folder and filename are stored in short description, not URI
+                        FileHelper.formatFolderAndFilenameFromPath(
+                            media.metadata.shortDescription,
+                            includeFilename = true,
+                            pathDepth = folderDepth
                         )
                     }
+                    else -> {
+                        FileHelper.formatFolderAndFilenameFromUri(
+                            media.uri,
+                            includeFilename = true,
+                            pathDepth = folderDepth
+                        )
+                    }
+                }
+                .trim()
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    ResolvedMetadata(
+                        text = it,
+                        poi = emptyMap(),
+                        metadataType = MetadataType.STATIC,
+                    )
+                }
             }
 
             "FOLDER_ONLY" -> {
-                FileHelper
-                    .formatFolderAndFilenameFromUri(media.uri, includeFilename = false, pathDepth = folderDepth)
-                    .trim()
-                    .takeIf { it.isNotBlank() }
-                    ?.let {
-                        ResolvedMetadata(
-                            text = it,
-                            poi = emptyMap(),
-                            metadataType = MetadataType.STATIC,
+                when (media.source) {
+                    AerialMediaSource.NCMEMORIES -> {
+                        // original folder is stored in short description, not URI
+                        FileHelper.formatFolderAndFilenameFromPath(
+                            media.metadata.shortDescription,
+                            includeFilename = false,
+                            pathDepth = folderDepth
                         )
                     }
+                    else -> {
+                        FileHelper.formatFolderAndFilenameFromUri(
+                            media.uri,
+                            includeFilename = false,
+                            pathDepth = folderDepth
+                        )
+                    }
+                }
+                .trim()
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    ResolvedMetadata(
+                        text = it,
+                        poi = emptyMap(),
+                        metadataType = MetadataType.STATIC,
+                    )
+                }
             }
 
             else -> {

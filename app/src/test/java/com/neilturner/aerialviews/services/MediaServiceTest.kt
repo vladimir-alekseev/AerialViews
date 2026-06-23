@@ -154,6 +154,9 @@ internal class MediaServiceTest {
             useImmichVideos = false,
             immichUrl = "",
             immichPath = "",
+            useNCMemoriesVideos = false,
+            ncmemoriesUrl = "",
+            ncmemoriesUsername = "",
             useCustomStreams = false,
             customUrls = "",
         )

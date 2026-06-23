@@ -51,7 +51,6 @@ internal object ImagePlayerHelper {
     ): OkHttpClient {
         val serverConfig = ServerConfig("", validateSsl)
         val okHttpClient = SslHelper().createOkHttpClient(serverConfig)
-        // TODO: don't add X-API-Key header if not using Immich (here and everywhere else)
         return okHttpClient
             .newBuilder()
             .also { builder ->

@@ -386,33 +386,22 @@
     <string name="ncmemories_media_select_album">Select Album</string>
     <string name="ncmemories_media_select_albums">Select Albums</string>
 
-    <string name="ncmemories_media_scheme_title">Scheme</string>
-    <string name="ncmemories_media_hostname_title">Hostname &amp; port</string>
-    <string name="ncmemories_media_hostname_summary">IP address and port of the server e.g. 192.168.1.2:2283</string>
     <string name="ncmemories_media_username_title">Username</string>
     <string name="ncmemories_media_username_summary">Username or e-mail</string>
     <string name="ncmemories_media_password_title">Password</string>
     <string name="ncmemories_media_password_summary">App password (preferred) or user password (not recommended)</string>
 
-    <string name="ncmemories_media_select_album_summary">No album selected</string>
     <string name="ncmemories_media_select_albums_summary">No albums selected</string>
     <string name="ncmemories_media_selected_album">Selected album: %1$s</string>
     <string name="ncmemories_media_selected_albums">%1$d albums selected</string>
     <string name="ncmemories_media_fetch_albums_error">Error Fetching Albums</string>
     <string name="ncmemories_media_no_albums">No Albums Found</string>
     <string name="ncmemories_media_no_albums_message">No albums were found in your Nextcloud Memories account. Please make sure you have at least one album created.</string>
-    <string name="ncmemories_media_unknown_error">An unknown error occurred</string>
 
-    <string name="ncmemories_media_include_favorites_title">Include favorite photos</string>
-    <string name="ncmemories_media_include_recent_title">Include recent photos</string>
+    <string name="ncmemories_media_include_favorites_title">Include favorite photos and videos</string>
+    <string name="ncmemories_media_include_recent_title">Include recent photos and videos</string>
     <string name="ncmemories_media_favorites_name">Favorites</string>
     <string name="ncmemories_media_recent_name">Recent</string>
-
-    <string name="ncmemories_media_test_summary1">Files found: %1$s</string>
-    <string name="ncmemories_media_test_summary2">Unsupported files: %1$s</string>
-    <string name="ncmemories_media_test_summary3">Videos found: %1$s</string>
-    <string name="ncmemories_media_test_summary4">Photos found: %1$s</string>
-    <string name="ncmemories_media_test_summary5">Selected for playback: %1$s</string>
 
     <string name="ncmemories_media_test_results">Test results</string>
 

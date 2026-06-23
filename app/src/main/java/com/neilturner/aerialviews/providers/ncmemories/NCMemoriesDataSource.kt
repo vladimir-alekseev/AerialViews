@@ -6,6 +6,8 @@ import androidx.media3.common.C
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import com.neilturner.aerialviews.data.network.ServerConfig
+import com.neilturner.aerialviews.data.network.SslHelper
 import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
@@ -19,7 +21,13 @@ import kotlin.io.encoding.Base64
 @SuppressLint("UnsafeOptInUsageError")
 class NCMemoriesDataSource : BaseDataSource(true) {
     private lateinit var dataSpec: DataSpec
-    private var okHttpClient: OkHttpClient = OkHttpClient()
+    private var okHttpClient: OkHttpClient =
+        SslHelper().createOkHttpClient(
+            ServerConfig(
+                "",
+                NCMemoriesMediaPrefs.validateSsl
+            )
+        )
     private var inputStream: InputStream? = null
     private var bytesRemaining: Long = 0
     private var opened = false

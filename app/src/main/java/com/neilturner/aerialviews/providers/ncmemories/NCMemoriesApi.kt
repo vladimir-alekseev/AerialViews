@@ -22,6 +22,7 @@ interface NCMemoriesApi {
         @Header("Authorization") credential: String,
         @Query("albums") cluster_id: String? = null,
         @Query("fav") fav: Int? = null,
+        @Query("vid") vid: Int? = null,
     ): Response<List<Day>>
 
     @Headers("OCS-APIRequest: true")
@@ -31,7 +32,8 @@ interface NCMemoriesApi {
         @Path("dayids") dayids: String,
         @Query("albums") cluster_id: String? = null,
         @Query("fav") fav: Int? = null,
-    ): Response<List<Image>>
+        @Query("vid") vid: Int? = null,
+        ): Response<List<Image>>
 
     @Headers("OCS-APIRequest: true")
     @GET("/apps/memories/api/image/info/{fileid}")
@@ -57,7 +59,6 @@ data class Album(
 data class Day(
     @SerialName("dayid")
     val dayid: Int,
-    val count: Int,
 )
 
 @Serializable
@@ -67,6 +68,8 @@ data class Image(
     val etag: String,
     @SerialName("basename")
     val basename: String,
+    val epoch: Long? = null,
+    val filename: String? = null,
     val exif: ExifInfo? = null,
     @SerialName("albumName")
     val albumName: String? = "",
@@ -74,7 +77,7 @@ data class Image(
 
 @Serializable
 data class ExifInfo(
-    val DateTimeOriginal: String? = null,
+    val DateTimeEpoch: Long? = null,
     val OffsetTimeOriginal: String? = null,
     val GPSLatitude: String? = null,
     val GPSLongitude: String? = null,

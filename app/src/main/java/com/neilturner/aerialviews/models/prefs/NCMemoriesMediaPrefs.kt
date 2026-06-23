@@ -48,4 +48,5 @@ object NCMemoriesMediaPrefs : KotprefModel(), NCMemoriesUrlPrefs, NCMemoriesImag
         NCMemoriesVideoType.TRANSCODED,
         "ncmemories_media_video_type"
     )
+    var isTestConnection: Boolean = false
 }

@@ -26,6 +26,7 @@ import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
 import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesDataSourceFactory
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
 import com.neilturner.aerialviews.services.philips.CustomRendererFactory
@@ -210,26 +211,6 @@ object VideoPlayerHelper {
         }
 
         AerialMediaSource.NCMEMORIES -> {
-            val dataSourceFactory =
-                DefaultHttpDataSource
-                    .Factory()
-                    .setAllowCrossProtocolRedirects(true)
-                    .setConnectTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
-                    .setReadTimeoutMs(TimeUnit.SECONDS.toMillis(30).toInt())
-
-            // Add necessary headers for Nextcloud Memories
-            val credential = Credentials.basic(
-                NCMemoriesMediaPrefs.username,
-                NCMemoriesMediaPrefs.password
-            )
-            dataSourceFactory.setDefaultRequestProperties(
-                mapOf("Authorization" to credential),
-            )
-
-            dataSourceFactory.setDefaultRequestProperties(
-                mapOf("OCS-APIRequest" to "true"),
-            )
-
             // If SSL validation is disabled, we need to set the appropriate flags
             if (!NCMemoriesMediaPrefs.validateSsl) {
                 System.setProperty("javax.net.ssl.trustAll", "true")
@@ -237,7 +218,7 @@ object VideoPlayerHelper {
 
             Timber.d("Setting up Nextcloud Memories media source with URI: ${mediaItem.localConfiguration?.uri}")
             ProgressiveMediaSource
-                .Factory(dataSourceFactory)
+                .Factory(NCMemoriesDataSourceFactory())
                 .createMediaSource(mediaItem)
         }
 

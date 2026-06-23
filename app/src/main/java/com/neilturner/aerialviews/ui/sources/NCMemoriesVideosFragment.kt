@@ -126,7 +126,7 @@ class NCMemoriesVideosFragment :
         // Username
         usernamePreference.summary =
             if (usernamePreference.text.isNullOrEmpty()) {
-                getString(R.string.ncmemories_media_password_summary)
+                getString(R.string.ncmemories_media_username_summary)
             } else {
                 usernamePreference.text
             }
@@ -160,12 +160,15 @@ class NCMemoriesVideosFragment :
             )
         progressDialog.show()
 
+        // skip EXIF queries for quick response
+        NCMemoriesMediaPrefs.isTestConnection = true
         val provider = NCMemoriesMediaProvider(requireContext(), NCMemoriesMediaPrefs)
         val message =
             when (val result = provider.fetch()) {
                 is ProviderFetchResult.Success -> result.summary
                 is ProviderFetchResult.Error -> result.message
             }
+        NCMemoriesMediaPrefs.isTestConnection = false
 
         progressDialog.dismiss()
         DialogHelper.showOnMain(
@@ -201,7 +204,7 @@ class NCMemoriesVideosFragment :
                     DialogHelper.show(
                         requireContext(),
                         "Error",
-                        "Failed to load albums: ${exception.message}",
+                        getString(R.string.ncmemories_media_fetch_albums_error) + ": ${exception.message}",
                     )
                 },
             )
@@ -219,8 +222,8 @@ class NCMemoriesVideosFragment :
         if (albums.isEmpty()) {
             DialogHelper.show(
                 requireContext(),
-                "No Albums",
-                "No albums found in your Nextcloud Memories instance.",
+                getString(R.string.ncmemories_media_no_albums),
+                getString(R.string.ncmemories_media_no_albums_message),
             )
             return
         }
@@ -238,7 +241,7 @@ class NCMemoriesVideosFragment :
 
         AlertDialog
             .Builder(requireContext())
-            .setTitle("Select Albums")
+            .setTitle(getString(R.string.ncmemories_media_select_albums))
             .setMultiChoiceItems(albumNames, checkedItems) { _, which, isChecked ->
                 if (isChecked) {
                     tempSelectedAlbumIds.add(albumIds[which])

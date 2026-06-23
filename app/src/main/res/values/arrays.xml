@@ -1483,11 +1483,11 @@
 
     <string name="overlay_meta_vid_poi">Dynamic Points of Interest</string>
     <string name="overlay_meta_vid_short_desc">Short Description</string>
-    <string name="overlay_meta_vid_location">Location (Media/Immich)</string>
-    <string name="overlay_meta_vid_date">Date taken (Media/Immich)</string>
+    <string name="overlay_meta_vid_location">Location (Media/Immich/NC Memories)</string>
+    <string name="overlay_meta_vid_date">Date taken (Media/Immich/NC Memories)</string>
     <string name="overlay_meta_vid_title">Title (Media)</string>
-    <string name="overlay_meta_vid_description">Description (Immich)</string>
-    <string name="overlay_meta_vid_album_name">Album Name (Immich)</string>
+    <string name="overlay_meta_vid_description">Description (Immich/NC Memories)</string>
+    <string name="overlay_meta_vid_album_name">Album Name (Immich/NC Memories)</string>
     <string name="overlay_meta_vid_filename">Use filename as-is</string>
     <string name="overlay_meta_vid_folder_filename">Folder &amp; filename</string>
     <string name="overlay_meta_vid_folder_only">Folder name only</string>
