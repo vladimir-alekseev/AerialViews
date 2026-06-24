@@ -16,8 +16,6 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import kotlin.math.min
-import kotlin.io.encoding.Base64
-
 @SuppressLint("UnsafeOptInUsageError")
 class NCMemoriesDataSource : BaseDataSource(true) {
     private lateinit var dataSpec: DataSpec

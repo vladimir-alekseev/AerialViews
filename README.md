@@ -749,6 +749,7 @@ the following permissions selected:
 :information_source: If you encounter `403 Forbidden` errors, verification failures, or blank
 screens during playback, double-check that the generated API key has all of these permissions
 active.
+</details>
 
 ## Nextcloud Memories Setup
 
@@ -758,8 +759,6 @@ for enhanced security.
 You can generate an app password via your Nextcloud web interface under **User Menu > Personal
 Settings > Security (tab) > Devices & Sessions (section)**. Just enter any app name (e.g. "Aerial
 Views") and press "Create new app password" button.
-
-</details>
   
 ## Weather data
 

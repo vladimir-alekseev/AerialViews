@@ -30,7 +30,6 @@ import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesDataSourceFacto
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
 import com.neilturner.aerialviews.services.philips.CustomRendererFactory
-import okhttp3.Credentials
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil

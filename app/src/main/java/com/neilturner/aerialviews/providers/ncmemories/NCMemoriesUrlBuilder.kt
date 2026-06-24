@@ -2,7 +2,6 @@ package com.neilturner.aerialviews.providers.ncmemories
 
 import android.content.res.Resources
 import android.net.Uri
-import android.util.DisplayMetrics
 import androidx.core.net.toUri
 import com.neilturner.aerialviews.models.enums.NCMemoriesImageType
 import com.neilturner.aerialviews.models.enums.NCMemoriesVideoType

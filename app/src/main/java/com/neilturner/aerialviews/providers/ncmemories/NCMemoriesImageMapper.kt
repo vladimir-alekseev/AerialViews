@@ -7,9 +7,6 @@ import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialExifMetadata
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
-import com.neilturner.aerialviews.providers.ncmemories.Image
-import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesUrlBuilder
-import com.neilturner.aerialviews.utils.toStringOrEmpty
 import timber.log.Timber
 import kotlin.time.Instant
 
