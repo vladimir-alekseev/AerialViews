@@ -127,7 +127,10 @@ class ImagePlayerView : FrameLayout {
                 return@launch
             }
 
-            if (media.source == AerialMediaSource.IMMICH) {
+            if (
+                (media.source == AerialMediaSource.IMMICH) ||
+                (media.source == AerialMediaSource.NCMEMORIES)
+                ) {
                 loadImage(media, baseStream)
                 return@launch
             }
