@@ -392,7 +392,9 @@ class ImagePlayerView : FrameLayout {
 
     private fun onPlayerError() {
         removeCallbacks(finishedRunnable)
-        postDelayed(errorRunnable, ScreenController.ERROR_DELAY)
+        // Notify immediately; the single error backoff is applied by
+        // ScreenController.handleError(). Delaying here too would double it.
+        post(errorRunnable)
     }
 
     fun setOnPlayerListener(listener: ScreenController) {
