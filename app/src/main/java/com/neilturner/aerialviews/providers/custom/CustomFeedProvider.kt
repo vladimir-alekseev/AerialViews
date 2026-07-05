@@ -11,6 +11,7 @@ import com.neilturner.aerialviews.models.enums.SceneType
 import com.neilturner.aerialviews.models.enums.TimeOfDay
 import com.neilturner.aerialviews.models.enums.VideoQuality
 import com.neilturner.aerialviews.models.prefs.CustomFeedPrefs
+import com.neilturner.aerialviews.models.videos.AerialExifMetadata
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
 import com.neilturner.aerialviews.providers.MediaProvider
@@ -512,6 +513,10 @@ class CustomFeedProvider(
                                 metadata =
                                     AerialMediaMetadata(
                                         shortDescription = photo.title,
+                                        // Photos have no per-timestamp POI/short-description overlay option
+                                        // (that path is video-only), so surface the feed title via the EXIF
+                                        // "description" field, which the default photo overlay already displays.
+                                        exif = AerialExifMetadata(description = photo.title),
                                         timeOfDay = TimeOfDay.UNKNOWN,
                                         scene = SceneType.UNKNOWN,
                                     ),
