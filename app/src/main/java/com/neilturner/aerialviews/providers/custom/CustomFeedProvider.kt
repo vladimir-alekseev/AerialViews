@@ -345,7 +345,7 @@ class CustomFeedProvider(
                         append("• $totalVideos videos found\n")
                     }
                     if (validEntriesUrls.isNotEmpty()) {
-                        append("• ${validEntriesUrls.size} video feeds\n")
+                        append("• ${validEntriesUrls.size} feeds\n")
                     }
                     if (validRtspUrls.isNotEmpty()) {
                         append("• ${validRtspUrls.size} RTSP streams\n")
