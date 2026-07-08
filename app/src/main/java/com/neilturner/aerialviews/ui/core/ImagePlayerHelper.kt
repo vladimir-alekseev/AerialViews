@@ -156,6 +156,12 @@ internal object ImagePlayerHelper {
                     context.contentResolver.openInputStream(finalUri)
                 }
 
+                "http", "https" -> {
+                    // Remote images are fetched directly by Coil's network loader,
+                    // so there's no local stream to open here.
+                    null
+                }
+
                 else -> {
                     Timber.e("Unsupported URI scheme: ${uri.scheme}")
                     null
