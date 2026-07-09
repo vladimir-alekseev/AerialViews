@@ -35,6 +35,57 @@ internal class ImmichRepositoryTest {
     private fun <T> errorResponse(code: Int): Response<T> =
         Response.error(code, mockk<ResponseBody>(relaxed = true))
 
+    private fun serverVersionResponse(major: Int): ServerVersionResponse =
+        ServerVersionResponse(major = major, minor = 0, patch = 0)
+
+    // -----------------------------------------------------------------------
+    // Server version detection
+    // -----------------------------------------------------------------------
+
+    @Nested
+    inner class GetServerVersion {
+        @Test
+        fun `returns major version from API`() = runTest {
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val result = repository.getServerVersion()
+
+            assertEquals(3, result)
+        }
+
+        @Test
+        fun `caches result after first call`() = runTest {
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            repository.getServerVersion()
+            repository.getServerVersion()
+
+            coVerify(exactly = 1) { api.getServerVersion() }
+        }
+
+        @Test
+        fun `falls back to v2 on API error`() = runTest {
+            coEvery { api.getServerVersion() } returns errorResponse(404)
+
+            val result = repository.getServerVersion()
+
+            assertEquals(2, result)
+        }
+
+        @Test
+        fun `falls back to v2 on network exception`() = runTest {
+            coEvery { api.getServerVersion() } throws RuntimeException("network error")
+
+            val result = repository.getServerVersion()
+
+            assertEquals(2, result)
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Shared album fetching
+    // -----------------------------------------------------------------------
+
     @Nested
     inner class GetSharedAlbumFromAPI {
         @Test
@@ -42,6 +93,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "share/12345"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedResponse = SharedLinkResponse(
                 id = "shared-1",
@@ -68,6 +120,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "share/12345"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedResponse = SharedLinkResponse(
                 id = "shared-1",
@@ -101,6 +154,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "share/12345"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedResponse = SharedLinkResponse(
                 id = "shared-1",
@@ -126,6 +180,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "share/12345"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedResponse = SharedLinkResponse(
                 id = "shared-1",
@@ -151,6 +206,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "share/12345"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             coEvery { api.getSharedAlbum(key = "12345", slug = null, password = null) } returns errorResponse(404)
 
@@ -164,6 +220,7 @@ internal class ImmichRepositoryTest {
 
             every { prefs.pathName } returns "/s/my-slug/"
             every { prefs.password } returns ""
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedResponse = SharedLinkResponse(
                 id = "shared-1",
@@ -178,15 +235,77 @@ internal class ImmichRepositoryTest {
 
             assertEquals(1, result.assets.size)
         }
+
+        // v3 shared link tests
+
+        @Test
+        fun `v3 - uses getSharedAlbumV3 (no password param)`() = runTest {
+            every { prefs.pathName } returns "share/12345"
+            every { prefs.password } returns "secret"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val sharedResponse = SharedLinkResponse(
+                id = "shared-1",
+                key = "resolved-key",
+                type = "INDIVIDUAL",
+                assets = listOf(Asset(id = "a1", type = "IMAGE", originalPath = "/photo1.jpg")),
+            )
+            coEvery { api.getSharedAlbumV3(key = "12345", slug = null) } returns Response.success(sharedResponse)
+
+            val result = repository.getSharedAlbumFromAPI()
+
+            assertEquals(1, result.assets.size)
+            // Ensure the v2 password-bearing endpoint was NOT called
+            coVerify(exactly = 0) { api.getSharedAlbum(any(), any(), any()) }
+        }
+
+        @Test
+        fun `v3 - fetches ALBUM assets via search metadata`() = runTest {
+            every { prefs.pathName } returns "share/12345"
+            every { prefs.password } returns ""
+            every { prefs.apiKey } returns ""
+            every { prefs.mediaType } returns ProviderMediaType.VIDEOS_PHOTOS
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val sharedResponse = SharedLinkResponse(
+                id = "shared-1",
+                key = "resolved-key",
+                type = "ALBUM",
+                description = "Shared Album v3",
+                album = Album(id = "album-1", name = "Vacation"),
+                assets = emptyList(),
+            )
+            val albumMeta = Album(id = "album-1", name = "Vacation", assetCount = 2)
+            val searchAssets = listOf(
+                Asset(id = "a1", type = "IMAGE", originalPath = "/photo1.jpg"),
+                Asset(id = "a2", type = "IMAGE", originalPath = "/photo2.jpg"),
+            )
+            val searchResponse = SearchAssetsResponse(assets = AssetsResult(items = searchAssets))
+
+            coEvery { api.getSharedAlbumV3(key = "12345", slug = null) } returns Response.success(sharedResponse)
+            coEvery { api.getSharedAlbumByIdV3(albumId = "album-1", key = "resolved-key") } returns Response.success(albumMeta)
+            coEvery { api.getSharedAlbumAssets(key = "resolved-key", searchRequest = any()) } returns Response.success(searchResponse)
+
+            val result = repository.getSharedAlbumFromAPI()
+
+            assertEquals("album-1", result.id)
+            assertEquals("Vacation", result.name)
+            assertEquals(2, result.assets.size)
+        }
     }
+
+    // -----------------------------------------------------------------------
+    // Selected album fetching
+    // -----------------------------------------------------------------------
 
     @Nested
     inner class GetSelectedAlbumFromAPI {
         @Test
-        fun `fetches and combines multiple albums`() = runTest {
+        fun `fetches and combines multiple albums (v2)`() = runTest {
 
             every { prefs.selectedAlbumIds } returns mutableSetOf("album-1", "album-2")
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val album1 = Album(
                 id = "album-1",
@@ -211,10 +330,11 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `deduplicates assets across albums`() = runTest {
+        fun `deduplicates assets across albums (v2)`() = runTest {
 
             every { prefs.selectedAlbumIds } returns mutableSetOf("album-1", "album-2")
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val sharedAsset = Asset(id = "a1", type = "IMAGE", originalPath = "/photo1.jpg")
             val album1 = Album(id = "album-1", name = "Album One", assets = listOf(sharedAsset))
@@ -232,6 +352,7 @@ internal class ImmichRepositoryTest {
         fun `returns empty album when no albums selected`() = runTest {
 
             every { prefs.selectedAlbumIds } returns mutableSetOf<String>()
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val result = repository.getSelectedAlbumFromAPI()
 
@@ -240,10 +361,11 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `throws exception when no assets found`() = runTest {
+        fun `throws exception when no assets found (v2)`() = runTest {
 
             every { prefs.selectedAlbumIds } returns mutableSetOf("album-1")
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val emptyAlbum = Album(id = "album-1", name = "Empty", assets = emptyList())
             coEvery { api.getAlbum(apiKey = "test-api-key", albumId = "album-1") } returns Response.success(emptyAlbum)
@@ -254,10 +376,11 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `continues with other albums when one fails`() = runTest {
+        fun `continues with other albums when one fails (v2)`() = runTest {
 
             every { prefs.selectedAlbumIds } returns mutableSetOf("album-1", "album-2")
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val album1 = Album(id = "album-1", name = "Album One", assets = listOf(Asset(id = "a1")))
             coEvery { api.getAlbum(apiKey = "test-api-key", albumId = "album-1") } returns Response.success(album1)
@@ -267,7 +390,71 @@ internal class ImmichRepositoryTest {
 
             assertEquals(1, result.assets.size)
         }
+
+        @Test
+        fun `v3 - fetches album assets via search metadata`() = runTest {
+            every { prefs.selectedAlbumIds } returns mutableSetOf("album-1")
+            every { prefs.apiKey } returns "test-api-key"
+            every { prefs.mediaType } returns ProviderMediaType.VIDEOS_PHOTOS
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val albumMeta = Album(id = "album-1", name = "My Album", assetCount = 2)
+            val searchAssets = listOf(
+                Asset(id = "a1", type = "IMAGE", originalPath = "/photo1.jpg"),
+                Asset(id = "a2", type = "IMAGE", originalPath = "/photo2.jpg"),
+            )
+            val searchResponse = SearchAssetsResponse(assets = AssetsResult(items = searchAssets))
+
+            coEvery { api.getAlbum(apiKey = "test-api-key", albumId = "album-1") } returns Response.success(albumMeta)
+            coEvery { api.getAlbumAssets(apiKey = "test-api-key", searchRequest = any()) } returns Response.success(searchResponse)
+
+            val result = repository.getSelectedAlbumFromAPI()
+
+            assertEquals("combined", result.id)
+            assertEquals(2, result.assets.size)
+            assertEquals("My Album", result.assets[0].albumName)
+        }
+
+        @Test
+        fun `v3 - paginates album asset fetching`() = runTest {
+            every { prefs.selectedAlbumIds } returns mutableSetOf("album-1")
+            every { prefs.apiKey } returns "test-api-key"
+            every { prefs.mediaType } returns ProviderMediaType.VIDEOS_PHOTOS
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val albumMeta = Album(id = "album-1", name = "Big Album", assetCount = 600)
+
+            // Page 1: full page (500 items)
+            val page1Assets = (1..500).map { Asset(id = "a$it", type = "IMAGE", originalPath = "/photo$it.jpg") }
+            val page1Response = SearchAssetsResponse(assets = AssetsResult(items = page1Assets))
+
+            // Page 2: partial page (100 items) — signals end
+            val page2Assets = (501..600).map { Asset(id = "a$it", type = "IMAGE", originalPath = "/photo$it.jpg") }
+            val page2Response = SearchAssetsResponse(assets = AssetsResult(items = page2Assets))
+
+            coEvery { api.getAlbum(apiKey = "test-api-key", albumId = "album-1") } returns Response.success(albumMeta)
+            coEvery {
+                api.getAlbumAssets(
+                    apiKey = "test-api-key",
+                    searchRequest = match { it.page == 1 },
+                )
+            } returns Response.success(page1Response)
+            coEvery {
+                api.getAlbumAssets(
+                    apiKey = "test-api-key",
+                    searchRequest = match { it.page == 2 },
+                )
+            } returns Response.success(page2Response)
+
+            val result = repository.getSelectedAlbumFromAPI()
+
+            assertEquals(600, result.assets.size)
+        }
     }
+
+    // -----------------------------------------------------------------------
+    // Favorite assets
+    // -----------------------------------------------------------------------
 
     @Nested
     inner class GetFavoriteAssetsFromAPI {
@@ -312,6 +499,10 @@ internal class ImmichRepositoryTest {
             }
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Rated assets
+    // -----------------------------------------------------------------------
 
     @Nested
     inner class GetRatedAssetsFromAPI {
@@ -366,6 +557,10 @@ internal class ImmichRepositoryTest {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Random assets
+    // -----------------------------------------------------------------------
+
     @Nested
     inner class GetRandomAssetsFromAPI {
         @Test
@@ -408,6 +603,10 @@ internal class ImmichRepositoryTest {
             }
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Recent assets
+    // -----------------------------------------------------------------------
 
     @Nested
     inner class GetRecentAssetsFromAPI {
@@ -453,12 +652,17 @@ internal class ImmichRepositoryTest {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Album listing (fetchAlbums)
+    // -----------------------------------------------------------------------
+
     @Nested
     inner class FetchAlbums {
         @Test
-        fun `fetches and combines regular and shared albums`() = runTest {
+        fun `fetches and combines regular and shared albums (v2)`() = runTest {
 
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val regularAlbums = listOf(Album(id = "r1", name = "Regular 1"))
             val sharedAlbums = listOf(Album(id = "s1", name = "Shared 1"))
@@ -473,9 +677,10 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `deduplicates albums by ID`() = runTest {
+        fun `deduplicates albums by ID (v2)`() = runTest {
 
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val album = Album(id = "a1", name = "Album 1")
             coEvery { api.getAlbums(apiKey = "test-api-key") } returns Response.success(listOf(album))
@@ -488,9 +693,10 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `returns failure when regular albums fetch fails`() = runTest {
+        fun `returns failure when regular albums fetch fails (v2)`() = runTest {
 
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             coEvery { api.getAlbums(apiKey = "test-api-key") } returns errorResponse(403)
 
@@ -500,9 +706,10 @@ internal class ImmichRepositoryTest {
         }
 
         @Test
-        fun `continues when shared albums fetch fails`() = runTest {
+        fun `continues when shared albums fetch fails (v2)`() = runTest {
 
             every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
 
             val regularAlbums = listOf(Album(id = "r1", name = "Regular 1"))
             coEvery { api.getAlbums(apiKey = "test-api-key") } returns Response.success(regularAlbums)
@@ -512,6 +719,37 @@ internal class ImmichRepositoryTest {
 
             assertTrue(result.isSuccess)
             assertEquals(1, result.getOrNull()?.size)
+        }
+
+        @Test
+        fun `v3 - uses isShared param instead of shared`() = runTest {
+            every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            val regularAlbums = listOf(Album(id = "r1", name = "Regular 1"))
+            val sharedAlbums = listOf(Album(id = "s1", name = "Shared 1"))
+
+            coEvery { api.getAlbumsV3(apiKey = "test-api-key") } returns Response.success(regularAlbums)
+            coEvery { api.getAlbumsV3(apiKey = "test-api-key", isShared = true) } returns Response.success(sharedAlbums)
+
+            val result = repository.fetchAlbums()
+
+            assertTrue(result.isSuccess)
+            assertEquals(2, result.getOrNull()?.size)
+            // Ensure v2 endpoint was NOT called
+            coVerify(exactly = 0) { api.getAlbums(any(), any()) }
+        }
+
+        @Test
+        fun `v3 - returns failure when regular albums fetch fails`() = runTest {
+            every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(3))
+
+            coEvery { api.getAlbumsV3(apiKey = "test-api-key") } returns errorResponse(403)
+
+            val result = repository.fetchAlbums()
+
+            assertTrue(result.isFailure)
         }
     }
 }
