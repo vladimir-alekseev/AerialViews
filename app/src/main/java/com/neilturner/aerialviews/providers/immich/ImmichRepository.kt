@@ -5,7 +5,7 @@ import com.neilturner.aerialviews.data.network.ServerConfig
 import com.neilturner.aerialviews.data.network.SslHelper
 import com.neilturner.aerialviews.data.network.UrlParser
 import com.neilturner.aerialviews.models.enums.ProviderMediaType
-import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
+import com.neilturner.aerialviews.models.prefs.ImmichRepositoryPrefs
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -14,24 +14,27 @@ import retrofit2.Retrofit
 import timber.log.Timber
 
 class ImmichRepository(
-    private val prefs: ImmichMediaPrefs,
+    private val prefs: ImmichRepositoryPrefs,
     private val urlBuilder: ImmichUrlBuilder,
+    private val apiOverride: ImmichApi? = null,
 ) {
     lateinit var server: String
 
     private val immichClient by lazy {
-        server = UrlParser.parseServerUrl(prefs.url)
-        val serverConfig = ServerConfig(server, prefs.validateSsl)
-        val okHttpClient = SslHelper().createOkHttpClient(serverConfig)
-        Timber.i("Connecting to $server")
+        apiOverride ?: run {
+            server = UrlParser.parseServerUrl(prefs.url)
+            val serverConfig = ServerConfig(server, prefs.validateSsl)
+            val okHttpClient = SslHelper().createOkHttpClient(serverConfig)
+            Timber.i("Connecting to $server")
 
-        Retrofit
-            .Builder()
-            .baseUrl(server)
-            .client(okHttpClient)
-            .addConverterFactory(buildSerializer())
-            .build()
-            .create(ImmichApi::class.java)
+            Retrofit
+                .Builder()
+                .baseUrl(server)
+                .client(okHttpClient)
+                .addConverterFactory(buildSerializer())
+                .build()
+                .create(ImmichApi::class.java)
+        }
     }
 
     suspend fun getSharedAlbumFromAPI(): Album {
