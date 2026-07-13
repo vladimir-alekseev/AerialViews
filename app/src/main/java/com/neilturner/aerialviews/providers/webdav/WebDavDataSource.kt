@@ -6,10 +6,11 @@ import androidx.media3.common.C
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
-import com.neilturner.aerialviews.utils.SambaHelper
+import com.neilturner.aerialviews.data.network.SambaHelper
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
 import okhttp3.Headers
 import okhttp3.OkHttpClient
+import timber.log.Timber
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -32,7 +33,10 @@ class WebDavDataSource : BaseDataSource(true) {
         this.dataSpec = dataSpec
         bytesRead = dataSpec.position
 
+        val startTime = System.currentTimeMillis()
         openWebDavFile(bytesRead)
+        val connectionTime = System.currentTimeMillis() - startTime
+        Timber.i("WebDAV connection established in ${connectionTime}ms (Size: $bytesToRead bytes)")
 
         transferStarted(dataSpec)
         return bytesToRead
@@ -45,7 +49,7 @@ class WebDavDataSource : BaseDataSource(true) {
         readLength: Int,
     ): Int = readInternal(buffer, offset, readLength)
 
-    override fun getUri(): Uri? = dataSpec.uri
+    override fun getUri(): Uri = dataSpec.uri
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun close() {

@@ -9,13 +9,13 @@ import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import com.neilturner.aerialviews.R
+import com.neilturner.aerialviews.data.network.SambaHelper
 import com.neilturner.aerialviews.models.prefs.WebDavMediaPrefs
 import com.neilturner.aerialviews.providers.ProviderFetchResult
 import com.neilturner.aerialviews.providers.webdav.WebDavHostParser
 import com.neilturner.aerialviews.providers.webdav.WebDavMediaProvider
-import com.neilturner.aerialviews.utils.DialogHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.SambaHelper
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
 import com.neilturner.aerialviews.utils.setSummaryFromValues
 import com.neilturner.aerialviews.utils.toStringOrEmpty
 import kotlinx.coroutines.launch
@@ -31,7 +31,6 @@ class WebDavVideosFragment :
         setPreferencesFromResource(R.xml.sources_webdav_videos, rootKey)
         preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
 
-        limitTextInput()
         updateSummary()
         setupValidation()
     }
@@ -101,13 +100,6 @@ class WebDavVideosFragment :
         }
     }
 
-    private fun limitTextInput() {
-        preferenceScreen.findPreference<EditTextPreference>("webdav_media_hostname")?.setOnBindEditTextListener { it.setSingleLine() }
-        preferenceScreen.findPreference<EditTextPreference>("webdav_media_pathname")?.setOnBindEditTextListener { it.setSingleLine() }
-        preferenceScreen.findPreference<EditTextPreference>("webdav_media_username")?.setOnBindEditTextListener { it.setSingleLine() }
-        preferenceScreen.findPreference<EditTextPreference>("webdav_media_password")?.setOnBindEditTextListener { it.setSingleLine() }
-    }
-
     private fun setupValidation() {
         findPreference<EditTextPreference>("webdav_media_hostname")?.setOnPreferenceChangeListener { _, newValue ->
             try {
@@ -137,9 +129,8 @@ class WebDavVideosFragment :
         progressDialog.show()
 
         val provider = WebDavMediaProvider(requireContext(), WebDavMediaPrefs)
-        val result = provider.fetch()
         val message =
-            when (result) {
+            when (val result = provider.fetch()) {
                 is ProviderFetchResult.Success -> result.summary
                 is ProviderFetchResult.Error -> result.message
             }

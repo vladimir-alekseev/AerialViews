@@ -4,17 +4,20 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 
 @Database(
     entities = [CachedMediaEntity::class, CachedMusicTrackEntity::class, PlaylistStateEntity::class],
     version = 1,
     exportSchema = true,
 )
+@TypeConverters(Converters::class)
 abstract class AerialDatabase : RoomDatabase() {
     abstract fun playlistCacheDao(): PlaylistCacheDao
 
     companion object {
         private const val DATABASE_NAME = "aerial_database"
+
         @Volatile
         private var db: AerialDatabase? = null
 

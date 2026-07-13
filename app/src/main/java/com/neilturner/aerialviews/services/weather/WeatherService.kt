@@ -2,11 +2,12 @@ package com.neilturner.aerialviews.services.weather
 
 import android.content.Context
 import android.os.Bundle
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.neilturner.aerialviews.BuildConfig
+import com.neilturner.aerialviews.data.network.JsonHelper.buildSerializer
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.services.weather.NetworkHelpers.buildOkHttpClient
 import com.neilturner.aerialviews.utils.FirebaseHelper
-import com.neilturner.aerialviews.utils.JsonHelper.buildSerializer
 import com.neilturner.aerialviews.utils.capitalise
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,10 +29,9 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class WeatherService(
-    context: Context,
+    val context: Context,
     private val apiOverride: OpenWeatherApi? = null,
 ) {
-    private val context = context.applicationContext
     private var updateJob: Job? = null
     private val maxRetries = 3
     private var totalUpdates = 0
@@ -392,19 +392,6 @@ class WeatherService(
         return fetchForecastResponse(config, attempt + 1)
     }
 
-    internal fun processCurrentWeatherResponse(response: CurrentWeatherResponse): WeatherEvent {
-        val city = GeneralPrefs.weatherLocationCustomName.ifEmpty { response.name }
-        return mapCurrentWeatherResponse(response, city)
-    }
-
-    internal fun processForecastResponse(response: FiveDayForecastResponse): ForecastEvent {
-        val timezoneOffset = response.city.timezone.toLong()
-        val today = ZonedDateTime.now(ZoneId.ofOffset("UTC", java.time.ZoneOffset.ofTotalSeconds(timezoneOffset.toInt()))).toLocalDate()
-        val city = GeneralPrefs.weatherLocationCustomName.ifEmpty { response.city.name }
-        val maxDays = GeneralPrefs.weatherLine2Days.toIntOrNull() ?: 5
-        return mapForecastResponse(response, today, city, maxDays)
-    }
-
     internal fun mapCurrentWeatherResponse(
         response: CurrentWeatherResponse,
         city: String,
@@ -483,7 +470,7 @@ class WeatherService(
         FirebaseHelper.analyticsEvent(
             "weather_updates",
             Bundle().apply {
-                putInt("per_session", totalUpdates)
+                putDouble(FirebaseAnalytics.Param.VALUE, totalUpdates.toDouble())
             },
         )
         Timber.i("Weather updates stopped, total updates for session: $totalUpdates")

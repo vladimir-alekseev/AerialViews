@@ -21,13 +21,13 @@ import com.neilturner.aerialviews.models.enums.ProgressBarType
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.services.InputStreamFetcher
+import com.neilturner.aerialviews.ui.controls.ProgressBarEvent
+import com.neilturner.aerialviews.ui.controls.ProgressState
 import com.neilturner.aerialviews.ui.core.ImagePlayerHelper.buildGifDecoder
 import com.neilturner.aerialviews.ui.core.ImagePlayerHelper.buildOkHttpClient
-import com.neilturner.aerialviews.ui.overlays.ProgressBarEvent
-import com.neilturner.aerialviews.ui.overlays.ProgressState
-import com.neilturner.aerialviews.utils.BitmapHelper
+import com.neilturner.aerialviews.ui.helpers.BitmapHelper
+import com.neilturner.aerialviews.ui.helpers.ToastHelper
 import com.neilturner.aerialviews.utils.FirebaseHelper
-import com.neilturner.aerialviews.utils.ToastHelper
 import com.neilturner.aerialviews.utils.filename
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +127,10 @@ class ImagePlayerView : FrameLayout {
                 return@launch
             }
 
-            if (media.source == AerialMediaSource.IMMICH) {
+            if (
+                (media.source == AerialMediaSource.IMMICH) ||
+                (media.source == AerialMediaSource.NCMEMORIES)
+                ) {
                 loadImage(media, baseStream)
                 return@launch
             }
@@ -222,14 +225,6 @@ class ImagePlayerView : FrameLayout {
                 }
             }
 
-            // Show toast if preference is enabled
-            if (GeneralPrefs.showMediaErrorToasts) {
-                mainScope.launch {
-                    val errorMessage = ex.localizedMessage ?: "Photo loading error occurred"
-                    ToastHelper.show(context, errorMessage)
-                }
-            }
-
             listener?.onImageError()
         }
     }
@@ -308,13 +303,6 @@ class ImagePlayerView : FrameLayout {
     private fun handleImageError(throwable: Throwable) {
         Timber.e(throwable, "Exception while loading image: ${throwable.message}")
         FirebaseHelper.crashlyticsException(throwable)
-
-        if (GeneralPrefs.showMediaErrorToasts) {
-            mainScope.launch {
-                val errorMessage = throwable.localizedMessage ?: "Photo loading error occurred"
-                ToastHelper.show(context, errorMessage)
-            }
-        }
 
         onPlayerError()
     }
@@ -407,7 +395,9 @@ class ImagePlayerView : FrameLayout {
 
     private fun onPlayerError() {
         removeCallbacks(finishedRunnable)
-        postDelayed(errorRunnable, ScreenController.ERROR_DELAY)
+        // Notify immediately; the single error backoff is applied by
+        // ScreenController.handleError(). Delaying here too would double it.
+        post(errorRunnable)
     }
 
     fun setOnPlayerListener(listener: ScreenController) {

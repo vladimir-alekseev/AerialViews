@@ -4,10 +4,8 @@ import android.content.Context
 import android.util.AttributeSet
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -18,14 +16,14 @@ import com.neilturner.aerialviews.models.enums.ProgressBarType
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.services.philips.PhilipsMediaCodecAdapterFactory
-import com.neilturner.aerialviews.ui.overlays.ProgressBarEvent
-import com.neilturner.aerialviews.ui.overlays.ProgressState
+import com.neilturner.aerialviews.ui.controls.ProgressBarEvent
+import com.neilturner.aerialviews.ui.controls.ProgressState
+import com.neilturner.aerialviews.ui.helpers.LocaleHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
+import com.neilturner.aerialviews.ui.helpers.RefreshRateHelper
+import com.neilturner.aerialviews.ui.helpers.ToastHelper
+import com.neilturner.aerialviews.ui.helpers.VolumeHelper
 import com.neilturner.aerialviews.utils.FirebaseHelper
-import com.neilturner.aerialviews.utils.LocaleHelper
-import com.neilturner.aerialviews.utils.PermissionHelper
-import com.neilturner.aerialviews.utils.RefreshRateHelper
-import com.neilturner.aerialviews.utils.ToastHelper
-import com.neilturner.aerialviews.utils.VolumeHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,7 +43,6 @@ class VideoPlayerView
         defStyleAttr: Int = 0,
     ) : PlayerView(context.applicationContext, attrs, defStyleAttr),
         Player.Listener {
-        @Suppress("JoinDeclarationAndAssignment")
         private val exoPlayer: ExoPlayer
         private var state = VideoState()
 
@@ -80,8 +77,7 @@ class VideoPlayerView
 
         init {
             // Use applicationContext to prevent activity context leaks
-            val appContext = context.applicationContext
-            exoPlayer = VideoPlayerHelper.buildPlayer(appContext, GeneralPrefs)
+            exoPlayer = VideoPlayerHelper.buildPlayer(context, GeneralPrefs)
 
             player = exoPlayer
             player?.addListener(this)
@@ -98,11 +94,14 @@ class VideoPlayerView
         }
 
         fun release() {
+            if (isDestroyed) return
+
+            Timber.i("Releasing VideoPlayerView...")
             isDestroyed = true
             pause()
             exoPlayer.setVideoSurface(null)
             // Release ExoPlayer to stop internal threads
-            exoPlayer.release()
+            // exoPlayer.release()
             player?.release()
             // Clear surface view to break context reference chain
             player = null
@@ -120,19 +119,27 @@ class VideoPlayerView
         fun toggleLooping() {
             if (isDestroyed) return
 
-            if (player?.repeatMode == Player.REPEAT_MODE_ALL) {
-                player?.repeatMode = Player.REPEAT_MODE_OFF
-                if (mainScope.coroutineContext[Job]?.isActive == true) {
-                    mainScope.launch {
-                        ToastHelper.show(context, "Looping disabled")
-                    }
-                }
-            } else {
+            GeneralPrefs.loopUntilSkipped = !GeneralPrefs.loopUntilSkipped
+
+            if (GeneralPrefs.loopUntilSkipped) {
                 player?.repeatMode = Player.REPEAT_MODE_ALL
-                if (mainScope.coroutineContext[Job]?.isActive == true) {
-                    mainScope.launch {
-                        ToastHelper.show(context, "Looping enabled")
-                    }
+            } else {
+                val maxVideoLength = GeneralPrefs.maxVideoLength.toLong() * 1000
+                val isLengthLimited = maxVideoLength >= 10000
+                val isShortVideo = exoPlayer.duration in 1..<maxVideoLength
+                if (isShortVideo && isLengthLimited && GeneralPrefs.loopShortVideos) {
+                    player?.repeatMode = Player.REPEAT_MODE_ALL
+                } else {
+                    player?.repeatMode = Player.REPEAT_MODE_OFF
+                }
+            }
+
+            setupAlmostFinishedRunnable()
+
+            if (mainScope.coroutineContext[Job]?.isActive == true) {
+                mainScope.launch {
+                    val message = if (GeneralPrefs.loopUntilSkipped) "Looping enabled" else "Looping disabled"
+                    ToastHelper.show(context, message)
                 }
             }
         }
@@ -249,6 +256,9 @@ class VideoPlayerView
 
                 Player.STATE_ENDED -> {
                     Timber.i("Playback ended...")
+                    if (player?.repeatMode == Player.REPEAT_MODE_OFF) {
+                        listener?.onVideoAlmostFinished()
+                    }
                 }
 
                 Player.STATE_READY -> {}
@@ -275,7 +285,7 @@ class VideoPlayerView
                 if (!GeneralPrefs.loopUntilSkipped) {
                     val maxVideoLength = GeneralPrefs.maxVideoLength.toLong() * 1000
                     val isLengthLimited = maxVideoLength >= 10000
-                    val isShortVideo = exoPlayer.duration > 0 && exoPlayer.duration < maxVideoLength
+                    val isShortVideo = exoPlayer.duration in 1..<maxVideoLength
                     if (isShortVideo && isLengthLimited && GeneralPrefs.loopShortVideos) {
                         player?.repeatMode = Player.REPEAT_MODE_ALL
                     } else {
@@ -351,31 +361,12 @@ class VideoPlayerView
             removeCallbacks(almostFinishedRunnable)
             FirebaseHelper.crashlyticsException(error.cause)
 
-            if (GeneralPrefs.showMediaErrorToasts && !isDestroyed) {
-                if (mainScope.coroutineContext[Job]?.isActive == true) {
-                    mainScope.launch {
-                        val errorMessage = error.localizedMessage ?: "Video playback error occurred"
-                        ToastHelper.show(context, errorMessage)
-                    }
-                }
-            }
-
             post(onErrorRunnable)
         }
 
         override fun onPlayerErrorChanged(error: PlaybackException?) {
             super.onPlayerErrorChanged(error)
             error?.let { Timber.e(it) }
-        }
-
-        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            super.onMediaMetadataChanged(mediaMetadata)
-            //emitTrackMetadata()
-        }
-
-        override fun onTracksChanged(tracks: Tracks) {
-            super.onTracksChanged(tracks)
-            //emitTrackMetadata()
         }
 
         private fun emitTrackMetadata() {
@@ -457,8 +448,12 @@ class VideoPlayerView
             removeCallbacks(almostFinishedRunnable)
 
             if (state.startPosition <= 0 && state.endPosition <= 0 && state.type != AerialMediaSource.RTSP) {
-                postDelayed(almostFinishedRunnable, 2 * 1000)
-                if (progressBar) GlobalBus.post(ProgressBarEvent(ProgressState.RESET))
+                if (GeneralPrefs.loopUntilSkipped) {
+                    Timber.i("The video will only finish when skipped manually")
+                } else {
+                    postDelayed(almostFinishedRunnable, 2 * 1000)
+                    if (progressBar) GlobalBus.post(ProgressBarEvent(ProgressState.RESET))
+                }
                 return
             }
 
@@ -467,12 +462,13 @@ class VideoPlayerView
 
             // Basic duration and progress
             val duration = state.endPosition - state.startPosition
-            
-            val loopDuration = if (exoPlayer.duration != androidx.media3.common.C.TIME_UNSET && exoPlayer.duration > 0) {
-                state.loopCount * exoPlayer.duration
-            } else {
-                0L
-            }
+
+            val loopDuration =
+                if (exoPlayer.duration != androidx.media3.common.C.TIME_UNSET && exoPlayer.duration > 0) {
+                    state.loopCount * exoPlayer.duration
+                } else {
+                    0L
+                }
             val progress = loopDuration + exoPlayer.currentPosition - state.startPosition
             val fadeDuration = GeneralPrefs.mediaFadeOutDuration.toLong()
 

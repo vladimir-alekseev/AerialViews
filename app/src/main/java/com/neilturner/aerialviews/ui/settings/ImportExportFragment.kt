@@ -14,17 +14,30 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import com.neilturner.aerialviews.R
 import com.neilturner.aerialviews.databinding.DialogImportSettingsBinding
-import com.neilturner.aerialviews.utils.DialogHelper
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
+import com.neilturner.aerialviews.ui.helpers.PreferenceHelper
 import com.neilturner.aerialviews.utils.FirebaseHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.PermissionHelper
-import com.neilturner.aerialviews.utils.PreferenceHelper
 import kotlinx.coroutines.launch
 
 class ImportExportFragment :
     MenuStateFragment(),
     PreferenceManager.OnPreferenceTreeClickListener {
-    private lateinit var requestWritePermission: ActivityResultLauncher<String>
+    private val requestWritePermission =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                exportSettings()
+            } else {
+                DialogHelper.show(
+                    requireContext(),
+                    "",
+                    requireContext().resources.getString(R.string.settings_export_failed),
+                )
+            }
+        }
 
     override fun onCreatePreferences(
         savedInstanceState: Bundle?,
@@ -34,13 +47,6 @@ class ImportExportFragment :
 
         lifecycleScope.launch {
             processDataUri()
-
-            requestWritePermission =
-                registerForActivityResult(
-                    ActivityResultContracts.RequestPermission(),
-                ) { isGranted: Boolean ->
-                    exportSettings()
-                }
         }
     }
 

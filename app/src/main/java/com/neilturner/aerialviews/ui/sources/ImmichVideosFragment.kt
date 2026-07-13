@@ -9,14 +9,14 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import com.neilturner.aerialviews.R
+import com.neilturner.aerialviews.data.network.UrlParser
 import com.neilturner.aerialviews.models.enums.ImmichAuthType
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
 import com.neilturner.aerialviews.providers.ProviderFetchResult
 import com.neilturner.aerialviews.providers.immich.Album
 import com.neilturner.aerialviews.providers.immich.ImmichMediaProvider
-import com.neilturner.aerialviews.utils.DialogHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.UrlParser
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
 import com.neilturner.aerialviews.utils.setSummaryFromValues
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -58,7 +58,6 @@ class ImmichVideosFragment :
         includeRecentPreference = findPreference("immich_media_include_recent")!!
 
         lifecycleScope.launch {
-            limitTextInput()
             updateAuthTypeVisibility()
             updateSummary()
             setupPreferenceClickListeners()
@@ -85,6 +84,7 @@ class ImmichVideosFragment :
         urlPreference.setOnPreferenceChangeListener { _, newValue ->
             try {
                 UrlParser.parseServerUrl(newValue.toString())
+                clearSelectedAlbumsIfChanged(urlPreference.text.orEmpty(), newValue.toString())
                 true
             } catch (e: IllegalArgumentException) {
                 AlertDialog
@@ -96,6 +96,11 @@ class ImmichVideosFragment :
             }
         }
 
+        apiKeyPreference.setOnPreferenceChangeListener { _, newValue ->
+            clearSelectedAlbumsIfChanged(apiKeyPreference.text.orEmpty(), newValue.toString())
+            true
+        }
+
         findPreference<Preference>("immich_media_test_connection")?.setOnPreferenceClickListener {
             lifecycleScope.launch { testImmichConnection() }
             true
@@ -104,6 +109,15 @@ class ImmichVideosFragment :
         selectAlbumsPreference.setOnPreferenceClickListener {
             lifecycleScope.launch { pickAlbums() }
             true
+        }
+    }
+
+    private fun clearSelectedAlbumsIfChanged(
+        currentValue: String,
+        newValue: String,
+    ) {
+        if (currentValue != newValue && ImmichMediaPrefs.selectedAlbumIds.isNotEmpty()) {
+            ImmichMediaPrefs.selectedAlbumIds.clear()
         }
     }
 
@@ -188,16 +202,6 @@ class ImmichVideosFragment :
         }
     }
 
-    private fun limitTextInput() {
-        listOf(
-            "immich_media_url",
-            "immich_media_password",
-            "immich_media_api_key",
-        ).forEach { key ->
-            findPreference<EditTextPreference>(key)?.setOnBindEditTextListener { it.setSingleLine() }
-        }
-    }
-
     private suspend fun testImmichConnection() {
         val loadingMessage = getString(R.string.message_media_searching)
         val progressDialog =
@@ -208,9 +212,8 @@ class ImmichVideosFragment :
         progressDialog.show()
 
         val provider = ImmichMediaProvider(requireContext(), ImmichMediaPrefs)
-        val result = provider.fetch()
         val message =
-            when (result) {
+            when (val result = provider.fetch()) {
                 is ProviderFetchResult.Success -> result.summary
                 is ProviderFetchResult.Error -> result.message
             }
@@ -267,7 +270,8 @@ class ImmichVideosFragment :
 
         val albumNames = albums.map { "${it.name} (${it.assetCount} assets)" }.toTypedArray()
         val albumIds = albums.map { it.id }.toTypedArray()
-        val currentSelectedAlbumIds = ImmichMediaPrefs.selectedAlbumIds
+        val availableAlbumIds = albumIds.toSet()
+        val currentSelectedAlbumIds = ImmichMediaPrefs.selectedAlbumIds.intersect(availableAlbumIds)
         val tempSelectedAlbumIds = currentSelectedAlbumIds.toMutableSet()
         val checkedItems =
             BooleanArray(albums.size) { index ->

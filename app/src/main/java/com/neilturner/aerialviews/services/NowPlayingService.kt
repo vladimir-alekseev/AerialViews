@@ -8,7 +8,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Bundle
 import androidx.core.content.getSystemService
-import com.neilturner.aerialviews.utils.PermissionHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,10 +21,9 @@ import timber.log.Timber
 // Thanks to @Spocky for his help with this feature!
 // Based on code from https://github.com/jathak/musicwidget/blob/master/app/src/main/java/xyz/jathak/musicwidget/NotificationListener.java
 class NowPlayingService(
-    context: Context,
+    val context: Context,
 ) : MediaController.Callback(),
     MediaSessionManager.OnActiveSessionsChangedListener {
-    private val context = context.applicationContext
     private val notificationListener = ComponentName(context, NotificationService::class.java)
     private val hasPermission = PermissionHelper.hasNotificationListenerPermission(context)
     private var sessionManager: MediaSessionManager? = null

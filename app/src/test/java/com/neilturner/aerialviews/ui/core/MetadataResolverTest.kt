@@ -10,7 +10,7 @@ import com.neilturner.aerialviews.models.enums.MetadataType
 import com.neilturner.aerialviews.models.videos.AerialExifMetadata
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
-import com.neilturner.aerialviews.utils.GeocoderHelper
+import com.neilturner.aerialviews.ui.helpers.GeocoderHelper
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -263,6 +263,22 @@ internal class MetadataResolverTest {
             val result = resolver.resolve(context, media, prefs)
 
             assertEquals("Fallback Description", result.text)
+            assertEquals(MetadataType.STATIC, result.metadataType)
+        }
+
+    @Test
+    fun `resolve photo with blank description falls back to filename`(): Unit =
+        runTest {
+            val media =
+                createMedia(
+                    type = AerialMediaType.IMAGE,
+                    description = null,
+                )
+            val prefs = defaultPrefs.copy(photoSelection = "DESCRIPTION,FILENAME")
+
+            val result = resolver.resolve(context, media, prefs)
+
+            assertEquals("video", result.text)
             assertEquals(MetadataType.STATIC, result.metadataType)
         }
 }

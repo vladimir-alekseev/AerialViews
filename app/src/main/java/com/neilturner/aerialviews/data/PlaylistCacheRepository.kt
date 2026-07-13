@@ -1,7 +1,7 @@
 package com.neilturner.aerialviews.data
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import com.neilturner.aerialviews.models.MediaFetchResult
 import com.neilturner.aerialviews.models.MediaPlaylist
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
@@ -16,8 +16,8 @@ import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.models.videos.AerialMediaMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import timber.log.Timber
+import kotlin.time.Duration.Companion.days
 
 class PlaylistCacheRepository(
     private val appContext: Context,
@@ -60,7 +60,7 @@ class PlaylistCacheRepository(
             } else {
                 // Time based validity
                 val cacheAgeMs = System.currentTimeMillis() - state.cachedAt
-                val maxAgeMs = intervalWeeks * 7L * 24L * 60L * 60L * 1000L
+                val maxAgeMs = (intervalWeeks * 7).days.inWholeMilliseconds
                 val isValid = cacheAgeMs < maxAgeMs
                 if (!isValid) Timber.i("Cache invalidated: age limit reached ($intervalWeeks weeks)")
                 return@withContext isValid
@@ -75,7 +75,7 @@ class PlaylistCacheRepository(
             Timber.d("PlaylistCache: Restoring state from DB. Position: ${state.mediaPosition}, Total: ${state.totalMediaItems}")
 
             val windowLimit = 50
-            val windowOffset = Math.max(0, state.mediaPosition - 5)
+            val windowOffset = 0.coerceAtLeast(state.mediaPosition - 5)
             Timber.d("PlaylistCache: Loading initial window. Offset: $windowOffset, Limit: $windowLimit")
             val cachedMediaChunks = dao.getMediaItemsChunk(windowLimit, windowOffset)
 
@@ -86,14 +86,27 @@ class PlaylistCacheRepository(
                 return@withContext null
             }
 
-            val mediaList = cachedMediaChunks.map { mapEntityToMedia(it) }
+            val mediaList =
+                try {
+                    cachedMediaChunks.map { mapEntityToMedia(it) }
+                } catch (e: Exception) {
+                    Timber.e(e, "PlaylistCache: Failed to map cached media entities")
+                    clearCache()
+                    return@withContext null
+                }
 
             val musicList =
-                cachedMusic.map { entity ->
-                    MusicTrack(
-                        uri = Uri.parse(entity.uri),
-                        source = enumValueOf<AerialMediaSource>(entity.source),
-                    )
+                try {
+                    cachedMusic.map { entity ->
+                        MusicTrack(
+                            uri = entity.uri.toUri(),
+                            source = enumValueOf<AerialMediaSource>(entity.source),
+                        )
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "PlaylistCache: Failed to map cached music entities")
+                    clearCache()
+                    return@withContext null
                 }
 
             val musicPlaylist =
@@ -108,11 +121,17 @@ class PlaylistCacheRepository(
                 }
 
             Timber.i("PlaylistCache: Cache restored successfully. Music track: ${state.musicTrackIndex}/${state.totalMusicTracks}")
+
+            // The saved media position is the last visual item that started.
+            // nextItem() pre-increments, so restoring from this value starts the following item.
+            val resumePosition = state.mediaPosition.coerceIn(-1, state.totalMediaItems - 1)
+            Timber.d("PlaylistCache: Last started position ${state.mediaPosition}, startPosition set to $resumePosition")
+
             MediaFetchResult(
                 mediaPlaylist =
                     MediaPlaylist(
                         initialVideos = mediaList,
-                        startPosition = state.mediaPosition,
+                        startPosition = resumePosition,
                         size = state.totalMediaItems,
                         windowOffset = windowOffset,
                         fetchChunk = { offset, limit ->
@@ -130,26 +149,24 @@ class PlaylistCacheRepository(
         limit: Int,
     ): List<AerialMedia> =
         withContext(Dispatchers.IO) {
-            val cachedMedia = dao.getMediaItemsChunk(limit, offset)
-            cachedMedia.map { mapEntityToMedia(it) }
+            try {
+                val cachedMedia = dao.getMediaItemsChunk(limit, offset)
+                cachedMedia.map { mapEntityToMedia(it) }
+            } catch (e: Exception) {
+                Timber.e(e, "PlaylistCache: Failed to map chunk")
+                emptyList()
+            }
         }
 
-    private fun mapEntityToMedia(entity: CachedMediaEntity): AerialMedia {
-        val pointsMap =
-            try {
-                Json.decodeFromString<Map<Int, String>>(entity.pointsOfInterest)
-            } catch (e: Exception) {
-                emptyMap()
-            }
-
-        return AerialMedia(
-            uri = Uri.parse(entity.uri),
+    private fun mapEntityToMedia(entity: CachedMediaEntity): AerialMedia =
+        AerialMedia(
+            uri = entity.uri.toUri(),
             type = enumValueOf<AerialMediaType>(entity.type),
             source = enumValueOf<AerialMediaSource>(entity.source),
             metadata =
                 AerialMediaMetadata(
                     shortDescription = entity.shortDescription,
-                    pointsOfInterest = pointsMap,
+                    pointsOfInterest = entity.pointsOfInterest,
                     timeOfDay = enumValueOf<TimeOfDay>(entity.timeOfDay),
                     scene = enumValueOf<SceneType>(entity.scene),
                     albumName = entity.albumName,
@@ -167,7 +184,6 @@ class PlaylistCacheRepository(
                         ),
                 ),
         )
-    }
 
     suspend fun cachePlaylist(
         media: List<AerialMedia>,
@@ -178,20 +194,13 @@ class PlaylistCacheRepository(
         val music = musicPlaylist?.tracks ?: emptyList()
         val mediaEntities =
             media.mapIndexed { index, m ->
-                val pointsStr =
-                    try {
-                        Json.encodeToString(m.metadata.pointsOfInterest)
-                    } catch (e: Exception) {
-                        "{}"
-                    }
-
                 CachedMediaEntity(
                     playlistOrder = index,
                     uri = m.uri.toString(),
                     type = m.type.name,
                     source = m.source.name,
                     shortDescription = m.metadata.shortDescription,
-                    pointsOfInterest = pointsStr,
+                    pointsOfInterest = m.metadata.pointsOfInterest,
                     timeOfDay = m.metadata.timeOfDay.name,
                     scene = m.metadata.scene.name,
                     albumName = m.metadata.albumName,
@@ -233,19 +242,17 @@ class PlaylistCacheRepository(
         Timber.i("PlaylistCache: Saved new cache. Media: ${media.size}, Music: ${music.size}, Hash: $settingsHash")
     }
 
-    suspend fun saveMediaPosition(position: Int) =
-        withContext(Dispatchers.IO) {
-            if (GeneralPrefs.playlistCache) {
-                dao.updateMediaPosition(position)
-            }
+    suspend fun saveMediaPosition(position: Int) {
+        if (GeneralPrefs.playlistCache) {
+            dao.updateMediaPosition(position)
         }
+    }
 
-    suspend fun saveMusicTrackIndex(index: Int) =
-        withContext(Dispatchers.IO) {
-            if (GeneralPrefs.playlistCache) {
-                dao.updateMusicTrackIndex(index)
-            }
+    suspend fun saveMusicTrackIndex(index: Int) {
+        if (GeneralPrefs.playlistCache) {
+            dao.updateMusicTrackIndex(index)
         }
+    }
 
     suspend fun clearCache() =
         withContext(Dispatchers.IO) {

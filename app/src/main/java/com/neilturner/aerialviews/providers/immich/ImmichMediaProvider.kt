@@ -1,13 +1,13 @@
 package com.neilturner.aerialviews.providers.immich
 
 import android.content.Context
+import com.neilturner.aerialviews.data.network.UrlParser
 import com.neilturner.aerialviews.models.enums.ImmichAuthType
 import com.neilturner.aerialviews.models.enums.ProviderSourceType
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.MediaProvider
 import com.neilturner.aerialviews.providers.ProviderFetchResult
-import com.neilturner.aerialviews.utils.UrlParser
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import timber.log.Timber
@@ -185,6 +185,7 @@ class ImmichMediaProvider(
 
             return@coroutineScope AssetFetchResults(
                 allAssets = allAssets,
+                primaryAlbumCount = filteredPrimaryAssets.size,
                 favoriteCount = favoriteAssets.size,
                 ratedCount = ratedAssets.size,
                 randomCount = randomAssets.size,
@@ -210,7 +211,7 @@ class ImmichMediaProvider(
         var message = ""
 
         // Show total assets fetched from albums/shared links
-        message += "Album assets: ${assetResults.allAssets.size}\n"
+        message += "Album assets: ${assetResults.primaryAlbumCount}\n"
 
         // Add information about different asset sources
         if (prefs.authType == ImmichAuthType.API_KEY) {
@@ -235,6 +236,7 @@ class ImmichMediaProvider(
 
     private data class AssetFetchResults(
         val allAssets: List<Asset>,
+        val primaryAlbumCount: Int,
         val favoriteCount: Int,
         val ratedCount: Int,
         val randomCount: Int,

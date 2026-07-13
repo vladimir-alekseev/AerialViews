@@ -52,7 +52,7 @@
     <string name="time_of_day_day">Day</string>
     <string name="time_of_day_sunset">Sunset</string>
     <string name="time_of_day_night">Night</string>
-    <string-array name="video_time_of_day_entries">
+    <string-array name="video_time_of_day_entries" translatable="false">
         <item>@string/time_of_day_sunrise</item>
         <item>@string/time_of_day_day</item>
         <item>@string/time_of_day_sunset</item>
@@ -264,7 +264,7 @@
     <string name="desc_manifest_disabled">Disabled</string>
     <string name="desc_manifest_short">Place name or short description</string>
     <string name="desc_manifest_poi">Available in many languages, which change as the video plays</string>
-    <string-array name="description_video_manifest_entries">
+    <string-array name="description_video_manifest_entries" translatable="false">
         <item>@string/desc_manifest_disabled</item>
         <item>@string/desc_manifest_short</item>
         <item>@string/desc_manifest_poi</item>
@@ -414,7 +414,7 @@
     <string name="audio_mode_mute_videos">Mute audio from videos</string>
     <string name="audio_mode_play_video_audio">Play audio from videos</string>
     <string name="audio_mode_play_background_music">Play background music</string>
-    <string-array name="audio_mode_entries">
+    <string-array name="audio_mode_entries" translatable="false">
         <item>@string/audio_mode_mute_videos</item>
         <item>@string/audio_mode_play_video_audio</item>
         <item>@string/audio_mode_play_background_music</item>
@@ -430,7 +430,7 @@
     <string name="playlist_cache_refresh_2_weeks">Every 2 weeks</string>
     <string name="playlist_cache_refresh_3_weeks">Every 3 weeks</string>
     <string name="playlist_cache_refresh_4_weeks">Every 4 weeks</string>
-    <string-array name="playlist_cache_refresh_entries">
+    <string-array name="playlist_cache_refresh_entries" translatable="false">
         <item>@string/playlist_cache_refresh_all</item>
         <item>@string/playlist_cache_refresh_1_week</item>
         <item>@string/playlist_cache_refresh_2_weeks</item>
@@ -617,6 +617,14 @@
         <item>@string/media_photos</item>
     </string-array>
     <string-array name="immich_media_selection_values" translatable="false">
+        <item>VIDEOS</item>
+        <item>PHOTOS</item>
+    </string-array>
+    <string-array name="ncmemories_media_selection_entries" translatable="false">
+        <item>@string/media_videos</item>
+        <item>@string/media_photos</item>
+    </string-array>
+    <string-array name="ncmemories_media_selection_values" translatable="false">
         <item>VIDEOS</item>
         <item>PHOTOS</item>
     </string-array>
@@ -874,13 +882,13 @@
     <string name="duration_overlay_fade_default" translatable="false">600</string>
 
     <!-- Longer videos limit -->
-    <string name="longervideo_skip">Skip when limit is reached</string>
-    <string name="longervideo_finish">Allow longer videos to finish</string>
-    <string name="longervideo_segments">Play random segments of long videos</string>
+    <string name="limit_Longer_videos_skip">Skip when limit is reached</string>
+    <string name="limit_Longer_videos_finish">Allow longer videos to finish</string>
+    <string name="limit_Longer_videos_segment">Play random segments of long videos</string>
     <string-array name="limit_Longer_videos_entries" translatable="false">
-        <item>@string/longervideo_skip</item>
-        <item>@string/longervideo_finish</item>
-        <item>@string/longervideo_segments</item>
+        <item>@string/limit_Longer_videos_skip</item>
+        <item>@string/limit_Longer_videos_finish</item>
+        <item>@string/limit_Longer_videos_segment</item>
     </string-array>
     <string-array name="limit_Longer_videos_values" translatable="false">
         <item>LIMIT</item>
@@ -888,10 +896,13 @@
         <item>SEGMENT</item>
     </string-array>
     <string name="limit_Longer_videos_default" translatable="false">LIMIT</string>
-    <string-array name="limit_Longer_videos_summaries">
-        <item>Obey limit - skip to the next video when the limit is reached</item>
-        <item>Ignore limit - if a video is longer than the set limit, it will be played until the end</item>
-        <item>Random segment - if a video is longer than the limit, a random part of the video will be played\n(eg. with a 2min limit, a 6min video can have 3 segments - one will be randomly played)</item>
+    <string name="limit_Longer_videos_skip_summary">Obey limit - skip to the next video when the limit is reached</string>
+    <string name="limit_Longer_videos_finish_summary">Ignore limit - if a video is longer than the set limit, it will be played until the end</string>
+    <string name="limit_Longer_videos_segment_summary">Random segment - if a video is longer than the limit, a random part of the video will be played\n(eg. with a 2min limit, a 6min video can have 3 segments - one will be randomly played)</string>
+    <string-array name="limit_Longer_videos_summaries" translatable="false">
+        <item>@string/limit_Longer_videos_skip_summary</item>
+        <item>@string/limit_Longer_videos_finish_summary</item>
+        <item>@string/limit_Longer_videos_segment_summary</item>
     </string-array>
 
     <!-- Overlay auto hide -->
@@ -1181,6 +1192,52 @@
     </string-array>
     <string name="immich_video_type_default" translatable="false">TRANSCODED</string>
 
+    <!-- Nextcloud Memories include photos -->
+    <string name="ncmemories_include_disabled">Disabled</string>
+    <string name="ncmemories_include_100">100 photos</string>
+    <string name="ncmemories_include_200">200 photos</string>
+    <string name="ncmemories_include_300">300 photos</string>
+    <string name="ncmemories_include_400">400 photos</string>
+    <string-array name="ncmemories_include_entries" translatable="false">
+        <item>@string/ncmemories_include_disabled</item>
+        <item>@string/ncmemories_include_100</item>
+        <item>@string/ncmemories_include_200</item>
+        <item>@string/ncmemories_include_300</item>
+        <item>@string/ncmemories_include_400</item>
+    </string-array>
+    <string-array name="ncmemories_include_values" translatable="false">
+        <item>DISABLED</item>
+        <item>100</item>
+        <item>200</item>
+        <item>300</item>
+        <item>400</item>
+    </string-array>
+    <string name="ncmemories_include_recent_default" translatable="false">DISABLED</string>
+
+    <string name="ncmemories_img_preview">Preview</string>
+    <string name="ncmemories_img_original">Original</string>
+    <string-array name="ncmemories_image_type_entries" translatable="false">
+        <item>@string/ncmemories_img_preview</item>
+        <item>@string/ncmemories_img_original</item>
+    </string-array>
+    <string-array name="ncmemories_image_type_values" translatable="false">
+        <item>PREVIEW</item>
+        <item>ORIGINAL</item>
+    </string-array>
+    <string name="ncmemories_image_type_default" translatable="false">PREVIEW</string>
+
+    <string name="ncmemories_vid_transcoded">Transcoded</string>
+    <string name="ncmemories_vid_original">Original</string>
+    <string-array name="ncmemories_video_type_entries" translatable="false">
+        <item>@string/ncmemories_vid_transcoded</item>
+        <item>@string/ncmemories_vid_original</item>
+    </string-array>
+    <string-array name="ncmemories_video_type_values" translatable="false">
+        <item>TRANSCODED</item>
+        <item>ORIGINAL</item>
+    </string-array>
+    <string name="ncmemories_video_type_default" translatable="false">TRANSCODED</string>
+
     <!-- Progress Bar -->
     <string name="progressbar_loc_disabled">Disabled</string>
     <string name="progressbar_loc_top">Top of the screen</string>
@@ -1426,11 +1483,11 @@
 
     <string name="overlay_meta_vid_poi">Dynamic Points of Interest</string>
     <string name="overlay_meta_vid_short_desc">Short Description</string>
-    <string name="overlay_meta_vid_location">Location (Media/Immich)</string>
-    <string name="overlay_meta_vid_date">Date taken (Media/Immich)</string>
+    <string name="overlay_meta_vid_location">Location (Media/Immich/NC Memories)</string>
+    <string name="overlay_meta_vid_date">Date taken (Media/Immich/NC Memories)</string>
     <string name="overlay_meta_vid_title">Title (Media)</string>
-    <string name="overlay_meta_vid_description">Description (Immich)</string>
-    <string name="overlay_meta_vid_album_name">Album Name (Immich)</string>
+    <string name="overlay_meta_vid_description">Description (Immich/NC Memories)</string>
+    <string name="overlay_meta_vid_album_name">Album Name (Immich/NC Memories)</string>
     <string name="overlay_meta_vid_filename">Use filename as-is</string>
     <string name="overlay_meta_vid_folder_filename">Folder &amp; filename</string>
     <string name="overlay_meta_vid_folder_only">Folder name only</string>
@@ -1460,10 +1517,10 @@
     </string-array>
     <string name="overlay_metadata_videos_default" translatable="false">POI</string>
 
-    <string name="overlay_meta_photo_location">Location (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_date">Date taken (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_description">Description (EXIF/Immich)</string>
-    <string name="overlay_meta_photo_album_name">Album Name (Immich)</string>
+    <string name="overlay_meta_photo_location">Location (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_date">Date taken (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_description">Description (EXIF/Immich/NC Memories)</string>
+    <string name="overlay_meta_photo_album_name">Album Name (Immich/NC Memories)</string>
     <string name="overlay_meta_photo_filename">Use filename as-is</string>
     <string name="overlay_meta_photo_folder_filename">Folder &amp; filename</string>
     <string name="overlay_meta_photo_folder_only">Folder name only</string>

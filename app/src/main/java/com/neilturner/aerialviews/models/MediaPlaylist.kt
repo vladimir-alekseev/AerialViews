@@ -21,9 +21,8 @@ class MediaPlaylist(
     private val scope = CoroutineScope(Dispatchers.IO)
 
     val currentPosition: Int get() = position
-    val hasReachedEnd: Boolean get() = _hasReachedEnd
 
-    suspend fun nextItem(): AerialMedia {
+    fun nextItem(): AerialMedia {
         position = calculateNext(++position)
         if (position == 0 && size > 0) _hasReachedEnd = true
 
@@ -33,7 +32,7 @@ class MediaPlaylist(
         return getItemAt(position)
     }
 
-    suspend fun previousItem(): AerialMedia {
+    fun previousItem(): AerialMedia {
         position = calculateNext(--position)
 
         Timber.v("MediaPlaylist: previousItem() -> pos $position / $size (window: ${windowVideos.size})")
@@ -42,7 +41,7 @@ class MediaPlaylist(
         return getItemAt(position)
     }
 
-    private suspend fun checkAndRefillWindow() {
+    private fun checkAndRefillWindow() {
         if (fetchChunk == null) return
 
         val relativeIndex = position - windowOffset
@@ -50,7 +49,7 @@ class MediaPlaylist(
 
         // Refill when 5 or fewer items remaining ahead in the window
         if (remaining <= 5 && position + remaining < size - 1) {
-            val newOffset = Math.max(0, position - 5)
+            val newOffset = 0.coerceAtLeast(position - 5)
             val limit = 50
 
             // Only fetch if the window would actually shift
@@ -71,33 +70,19 @@ class MediaPlaylist(
         }
     }
 
-    private suspend fun getItemAt(absoluteIndex: Int): AerialMedia {
+    private fun getItemAt(absoluteIndex: Int): AerialMedia {
         synchronized(windowLock) {
             val relativeIndex = absoluteIndex - windowOffset
-            if (relativeIndex in 0 until windowVideos.size) {
+            if (relativeIndex in windowVideos.indices) {
                 return windowVideos[relativeIndex]
             }
         }
 
-        // Cache miss fallback (happens if fetch hasn't completed or we jumped significantly)
-        if (fetchChunk != null) {
-            Timber.w("Sync fetching chunk due to buffer miss at index $absoluteIndex")
-            val newOffset = Math.max(0, absoluteIndex - 5)
-            val freshData = fetchChunk.invoke(newOffset, 50)
-            synchronized(windowLock) {
-                windowOffset = newOffset
-                windowVideos.clear()
-                windowVideos.addAll(freshData)
-
-                val newRelative = absoluteIndex - windowOffset
-                if (newRelative in 0 until windowVideos.size) {
-                    return windowVideos[newRelative]
-                }
-            }
-        }
+        Timber.w("MediaPlaylist: Cache miss at index $absoluteIndex, returning first available")
 
         synchronized(windowLock) {
-            return windowVideos.first()
+            return windowVideos.firstOrNull()
+                ?: throw IllegalStateException("Playlist is empty")
         }
     }
 

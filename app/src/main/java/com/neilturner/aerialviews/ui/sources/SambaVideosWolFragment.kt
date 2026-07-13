@@ -9,10 +9,10 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import com.neilturner.aerialviews.R
+import com.neilturner.aerialviews.data.network.NetworkHelper
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs
-import com.neilturner.aerialviews.utils.DialogHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.NetworkHelper
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
 import com.neilturner.aerialviews.utils.toStringOrEmpty
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,7 +38,6 @@ class SambaVideosWolFragment :
             }
         }
 
-        limitTextInput()
         updateSummary()
     }
 
@@ -146,12 +145,6 @@ class SambaVideosWolFragment :
             timeout?.summary = "${timeout.text} seconds"
         } else {
             timeout?.summary = getString(R.string.advanced_wol_timeout_summary)
-        }
-    }
-
-    private fun limitTextInput() {
-        listOf("samba_media_wake_on_lan_mac_address", "samba_media_wake_on_lan_timeout").forEach { key ->
-            findPreference<EditTextPreference>(key)?.setOnBindEditTextListener { it.setSingleLine() }
         }
     }
 }

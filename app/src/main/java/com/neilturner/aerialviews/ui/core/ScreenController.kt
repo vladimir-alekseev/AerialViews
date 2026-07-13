@@ -25,6 +25,7 @@ import com.neilturner.aerialviews.models.enums.LocationType
 import com.neilturner.aerialviews.models.enums.MetadataType
 import com.neilturner.aerialviews.models.enums.OverlayType
 import com.neilturner.aerialviews.models.enums.ProgressBarLocation
+import com.neilturner.aerialviews.models.music.MusicPlaylist
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.services.KtorServer
@@ -32,28 +33,28 @@ import com.neilturner.aerialviews.services.MediaService
 import com.neilturner.aerialviews.services.MusicPlayer
 import com.neilturner.aerialviews.services.NowPlayingService
 import com.neilturner.aerialviews.services.weather.WeatherService
+import com.neilturner.aerialviews.ui.controls.ProgressBar
+import com.neilturner.aerialviews.ui.controls.ProgressBarEvent
+import com.neilturner.aerialviews.ui.controls.ProgressState
 import com.neilturner.aerialviews.ui.core.ImagePlayerView.OnImagePlayerEventListener
 import com.neilturner.aerialviews.ui.core.VideoPlayerView.OnVideoPlayerEventListener
+import com.neilturner.aerialviews.ui.helpers.ColourHelper
+import com.neilturner.aerialviews.ui.helpers.FontHelper
+import com.neilturner.aerialviews.ui.helpers.GradientHelper
+import com.neilturner.aerialviews.ui.helpers.OverlayHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
+import com.neilturner.aerialviews.ui.helpers.RefreshRateHelper
+import com.neilturner.aerialviews.ui.helpers.ToastHelper
+import com.neilturner.aerialviews.ui.helpers.WindowHelper
 import com.neilturner.aerialviews.ui.overlays.MessageOverlay
 import com.neilturner.aerialviews.ui.overlays.MetadataOverlay
 import com.neilturner.aerialviews.ui.overlays.NowPlayingOverlay
-import com.neilturner.aerialviews.ui.overlays.ProgressBar
-import com.neilturner.aerialviews.ui.overlays.ProgressBarEvent
-import com.neilturner.aerialviews.ui.overlays.ProgressState
 import com.neilturner.aerialviews.ui.overlays.WeatherForecastOverlay
 import com.neilturner.aerialviews.ui.overlays.WeatherNowOverlay
 import com.neilturner.aerialviews.ui.overlays.state.MessageOverlayState
 import com.neilturner.aerialviews.ui.overlays.state.OverlayEventBridge
 import com.neilturner.aerialviews.ui.overlays.state.OverlayStateStore
 import com.neilturner.aerialviews.ui.overlays.state.OverlayUiState
-import com.neilturner.aerialviews.utils.ColourHelper
-import com.neilturner.aerialviews.utils.FontHelper
-import com.neilturner.aerialviews.utils.GradientHelper
-import com.neilturner.aerialviews.utils.OverlayHelper
-import com.neilturner.aerialviews.utils.PermissionHelper
-import com.neilturner.aerialviews.utils.RefreshRateHelper
-import com.neilturner.aerialviews.utils.ToastHelper
-import com.neilturner.aerialviews.utils.WindowHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,19 +62,20 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.kosert.flowbus.GlobalBus
 import timber.log.Timber
 import kotlin.math.abs
 
 class ScreenController(
-    context: Context,
+    val context: Context,
 ) : OnVideoPlayerEventListener,
     OnImagePlayerEventListener {
-    private val context = context.applicationContext
     private val mainScope = CoroutineScope(Dispatchers.Main)
     private lateinit var playlist: MediaPlaylist
     private var overlayHelper: OverlayHelper
     private val resources by lazy { context.resources }
+    private var isStopped = false
 
     private var nowPlayingService: NowPlayingService? = null
     private var weatherService: WeatherService? = null
@@ -160,9 +162,8 @@ class ScreenController(
             if (videoParent != null) {
                 val index = videoParent.indexOfChild(initialVideoRoot)
                 videoParent.removeView(initialVideoRoot)
-                // Use applicationContext to prevent activity context leaks in parent views
-                val appContextInflater = LayoutInflater.from(context.applicationContext)
-                val replacementVideoRoot = appContextInflater.inflate(videoLayoutRes, videoParent, false)
+                val inflater = LayoutInflater.from(context)
+                val replacementVideoRoot = inflater.inflate(videoLayoutRes, videoParent, false)
                 videoParent.addView(replacementVideoRoot, index)
                 VideoViewBinding.bind(replacementVideoRoot)
             } else {
@@ -269,7 +270,7 @@ class ScreenController(
             playlist = mediaResult.mediaPlaylist
             if (playlist.size > 0) {
                 Timber.i("Playlist size: ${playlist.size}")
-                loadItem(playlist.nextItem())
+                loadNextItem()
                 scheduleSleepTimer()
             } else {
                 showLoadingError()
@@ -317,7 +318,7 @@ class ScreenController(
     }
 
     private fun setupMusicPlayer(
-        musicPlaylist: com.neilturner.aerialviews.models.music.MusicPlaylist?,
+        musicPlaylist: MusicPlaylist?,
         resumeIndex: Int = 0,
     ) {
         val backgroundMusicSelected = GeneralPrefs.playsBackgroundMusic
@@ -410,7 +411,6 @@ class ScreenController(
             .animate()
             .alpha(0f)
             .setDuration(LOADING_FADE_OUT)
-            .withLayer()
             .withEndAction {
                 loadingContainer.visibility = View.GONE
             }.start()
@@ -471,7 +471,6 @@ class ScreenController(
             .alpha(0f)
             .setStartDelay(startDelay)
             .setDuration(mediaFadeIn)
-            .withLayer()
             .withEndAction {
                 loadingView.alpha = 0f
                 loadingView.visibility = View.INVISIBLE
@@ -496,7 +495,6 @@ class ScreenController(
             .animate()
             .alpha(1f)
             .setDuration(mediaFadeOut)
-            .withLayer()
             .withStartAction {
                 loadingView.visibility = View.VISIBLE
                 loadingView.alpha = 0f
@@ -513,17 +511,9 @@ class ScreenController(
                 pauseStartTime = 0
 
                 if (!blackOutMode) {
-                    mainScope.launch {
-                        val media =
-                            if (!previousItem) {
-                                playlist.nextItem()
-                            } else {
-                                playlist.previousItem()
-                            }
-                        previousItem = false
-                        loadItem(media)
-                        savePlaybackPosition()
-                    }
+                    val loadPreviousItem = previousItem
+                    previousItem = false
+                    loadNextItem(loadPreviousItem)
                 } else {
                     previousItem = false
                 }
@@ -631,6 +621,17 @@ class ScreenController(
         }
     }
 
+    private fun loadNextItem(previous: Boolean = false) {
+        val media =
+            if (previous) {
+                playlist.previousItem()
+            } else {
+                playlist.nextItem()
+            }
+        loadItem(media)
+        savePlaybackPosition()
+    }
+
     private fun savePlaybackPosition() {
         if (this::playlist.isInitialized && GeneralPrefs.playlistCache) {
             mainScope.launch {
@@ -650,9 +651,15 @@ class ScreenController(
     }
 
     fun stop() {
-        if (this::playlist.isInitialized) {
-            savePlaybackPosition()
-            saveMusicTrackPosition()
+        if (isStopped) return
+        isStopped = true
+
+        if (GeneralPrefs.playlistCache) {
+            runBlocking(Dispatchers.IO) {
+                musicPlayer?.let {
+                    cacheRepository.saveMusicTrackIndex(it.getCurrentTrackIndex())
+                }
+            }
         }
         RefreshRateHelper.restoreOriginalMode(context)
         overlayEventBridge.stop()
@@ -689,9 +696,7 @@ class ScreenController(
             fadeOutCurrentItem()
         } else {
             blackOutMode = false
-            mainScope.launch {
-                loadItem(playlist.nextItem())
-            }
+            loadNextItem()
             // Restart sleep timer if preference still enabled
             scheduleSleepTimer()
         }
@@ -848,7 +853,7 @@ class ScreenController(
         mainScope.launch {
             delay(ERROR_DELAY)
             if (loadingView.isVisible) {
-                loadItem(playlist.nextItem())
+                loadNextItem()
             } else {
                 fadeOutCurrentItem()
             }

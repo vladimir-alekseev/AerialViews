@@ -1,5 +1,6 @@
 package com.neilturner.aerialviews.utils
 
+import com.neilturner.aerialviews.data.network.UrlValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
@@ -80,6 +81,13 @@ internal class UrlValidatorTest {
     }
 
     @Test
+    @DisplayName("parseUrls keeps CSV file paths")
+    fun parseUrlsKeepsCsvFilePaths() {
+        val result = UrlValidator.parseUrls("https://mufb.lol/kiosk/artemis/test.csv")
+        assertEquals(listOf("https://mufb.lol/kiosk/artemis/test.csv"), result)
+    }
+
+    @Test
     @DisplayName("parseUrls handles duplicated protocol prefixes")
     fun parseUrlsHandlesDuplicatedProtocolPrefixes() {
         val result = UrlValidator.parseUrls("http://http://example.com, https://https://test.com")
@@ -111,6 +119,7 @@ internal class UrlValidatorTest {
         assertTrue(UrlValidator.isValidUrl("192.168.1.1:2283"))
         assertTrue(UrlValidator.isValidUrl("https://example.com"))
         assertTrue(UrlValidator.isValidUrl("http://test.com"))
+        assertTrue(UrlValidator.isValidUrl("https://mufb.lol/kiosk/artemis/test.csv"))
     }
 
     @Test

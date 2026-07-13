@@ -15,7 +15,6 @@ import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector.Parameters
-import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
@@ -25,7 +24,9 @@ import com.neilturner.aerialviews.models.enums.VideoScale
 import com.neilturner.aerialviews.models.music.MusicTrack
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesDataSourceFactory
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
 import com.neilturner.aerialviews.services.philips.CustomRendererFactory
@@ -79,7 +80,6 @@ object VideoPlayerHelper {
 
         return ExoPlayer
             .Builder(context)
-            .setBandwidthMeter(DefaultBandwidthMeter.Builder(context).build())
             .setLoadControl(loadControl)
             .build()
     }
@@ -127,8 +127,9 @@ object VideoPlayerHelper {
                 .setRenderersFactory(rendererFactory)
                 .build()
 
-        if (prefs.enablePlaybackLogging) {
+        if (prefs.enableLogCapture) {
             player.addAnalyticsListener(EventLogger())
+            player.addAnalyticsListener(PlaybackDiagnosticsListener(context))
         }
 
         if (prefs.playsVideoAudio) {
@@ -154,16 +155,6 @@ object VideoPlayerHelper {
         media: AerialMedia,
     ) {
         player.setMediaSource(createMediaSource(context, MediaItem.fromUri(media.uri), media.source))
-    }
-
-    @OptIn(UnstableApi::class)
-    fun setupAudioSource(
-        context: Context,
-        player: ExoPlayer,
-        track: MusicTrack,
-    ) {
-        player.setMediaSource(createMediaSource(context, MediaItem.fromUri(track.uri), track.source))
-        player.prepare()
     }
 
     @OptIn(UnstableApi::class)
@@ -218,6 +209,18 @@ object VideoPlayerHelper {
                 .createMediaSource(mediaItem)
         }
 
+        AerialMediaSource.NCMEMORIES -> {
+            // If SSL validation is disabled, we need to set the appropriate flags
+            if (!NCMemoriesMediaPrefs.validateSsl) {
+                System.setProperty("javax.net.ssl.trustAll", "true")
+            }
+
+            Timber.d("Setting up Nextcloud Memories media source with URI: ${mediaItem.localConfiguration?.uri}")
+            ProgressiveMediaSource
+                .Factory(NCMemoriesDataSourceFactory())
+                .createMediaSource(mediaItem)
+        }
+
         AerialMediaSource.WEBDAV -> {
             ProgressiveMediaSource
                 .Factory(WebDavDataSourceFactory())
@@ -239,7 +242,7 @@ object VideoPlayerHelper {
     ): Pair<Long, Long> {
         val maxVideoLength = prefs.maxVideoLength.toLong() * 1000
         val isLengthLimited = maxVideoLength >= TEN_SECONDS
-        val isShortVideo = player.duration < maxVideoLength
+        val isShortVideo = player.duration in 1..<maxVideoLength
 
         if (type == AerialMediaSource.RTSP) {
             Timber.i("Calculating RTSP stream length...")
@@ -296,7 +299,7 @@ object VideoPlayerHelper {
     ): Pair<Long, Long> {
         if (duration <= 0 || range < 5) {
             Timber.e("Invalid duration or range: duration=$duration, range=$range%")
-            return Pair(0, 0)
+            return Pair(0, duration)
         }
         val seekPosition = (duration * range / 100.0).toLong()
         val randomPosition = Random.nextLong(seekPosition)
@@ -341,7 +344,7 @@ object VideoPlayerHelper {
     ): Pair<Long, Long> {
         if (duration <= 0 || maxLength < TEN_SECONDS) {
             Timber.e("Invalid duration or max length: duration=$duration, maxLength=$maxLength%")
-            return Pair(0, 0)
+            return Pair(0, duration)
         }
         val loopCount = ceil(maxLength / duration.toDouble()).toInt()
         val targetDuration = duration * loopCount

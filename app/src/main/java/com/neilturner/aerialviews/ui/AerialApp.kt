@@ -5,13 +5,12 @@ import android.os.StrictMode
 import android.os.StrictMode.VmPolicy
 import com.neilturner.aerialviews.BuildConfig
 import com.neilturner.aerialviews.models.enums.OverlayType
-import com.neilturner.aerialviews.models.enums.PlaylistAudioMode
 import com.neilturner.aerialviews.models.enums.VideoQuality
 import com.neilturner.aerialviews.models.prefs.AppleVideoPrefs
 import com.neilturner.aerialviews.models.prefs.Comm1VideoPrefs
 import com.neilturner.aerialviews.models.prefs.Comm2VideoPrefs
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
-import com.neilturner.aerialviews.utils.DeviceHelper
+import com.neilturner.aerialviews.ui.helpers.DeviceHelper
 import com.neilturner.aerialviews.utils.LogcatCapture
 import timber.log.Timber
 
@@ -43,8 +42,6 @@ class AerialApp : Application() {
 
             GeneralPrefs.checkForHevcSupport = true
         }
-
-        initializePlaylistAudioMode()
     }
 
     private fun configureLogging() {
@@ -72,44 +69,6 @@ class AerialApp : Application() {
 
     private fun changeOverlayOption() {
         GeneralPrefs.slotBottomRight1 = OverlayType.EMPTY
-    }
-
-    private fun initializePlaylistAudioMode() {
-        val prefs = getSharedPreferences("${packageName}_preferences", MODE_PRIVATE)
-        if (prefs.contains("playlist_audio_mode")) {
-            return
-        }
-
-        val hasConfiguredMusicSource =
-            (
-                prefs.getBoolean("local_videos_enabled", false) &&
-                    prefs.getStringSet("local_media_selection", emptySet())?.contains("MUSIC") == true
-            ) ||
-                (
-                    prefs.getBoolean("samba_videos_enabled", false) &&
-                        prefs.getStringSet("samba_media_selection", emptySet())?.contains("MUSIC") == true
-                ) ||
-                (
-                    prefs.getBoolean("samba_videos2_enabled", false) &&
-                        prefs.getStringSet("samba_media_selection", emptySet())?.contains("MUSIC") == true
-                ) ||
-                (
-                    prefs.getBoolean("webdav_media_enabled", false) &&
-                        prefs.getStringSet("webdav_media_selection", emptySet())?.contains("MUSIC") == true
-                ) ||
-                (
-                    prefs.getBoolean("webdav_media2_enabled", false) &&
-                        prefs.getStringSet("webdav_media_selection", emptySet())?.contains("MUSIC") == true
-                )
-
-        val mode =
-            when {
-                !prefs.getBoolean("mute_videos", true) -> PlaylistAudioMode.VIDEO_AUDIO
-                hasConfiguredMusicSource -> PlaylistAudioMode.BACKGROUND_MUSIC
-                else -> PlaylistAudioMode.VIDEO_MUTED
-            }
-
-        prefs.edit().putString("playlist_audio_mode", mode.name).apply()
     }
 
     private fun setupStrictMode() {

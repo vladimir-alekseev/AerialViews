@@ -19,6 +19,7 @@ import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
 import com.neilturner.aerialviews.models.prefs.LocalMediaPrefs
 import com.neilturner.aerialviews.models.prefs.MusicPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs2
 import com.neilturner.aerialviews.models.prefs.WebDavMediaPrefs
@@ -32,13 +33,13 @@ import com.neilturner.aerialviews.providers.LocalMediaProvider
 import com.neilturner.aerialviews.providers.MediaProvider
 import com.neilturner.aerialviews.providers.custom.CustomFeedProvider
 import com.neilturner.aerialviews.providers.immich.ImmichMediaProvider
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesMediaProvider
 import com.neilturner.aerialviews.providers.samba.SambaMediaProvider
 import com.neilturner.aerialviews.providers.webdav.WebDavMediaProvider
 import com.neilturner.aerialviews.services.MediaServiceHelper.addMetadataToManifestVideos
 import com.neilturner.aerialviews.services.MediaServiceHelper.buildProviderContent
 import com.neilturner.aerialviews.utils.FirebaseHelper
 import com.neilturner.aerialviews.services.MediaServiceHelper.weightedInterleavedShuffle
-import com.neilturner.aerialviews.utils.TimeOfDayHelper
 import com.neilturner.aerialviews.utils.filename
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,6 +54,7 @@ class MediaService(
         val removeDuplicates: Boolean,
         val ignoreNonManifestVideos: Boolean,
         val autoTimeOfDay: Boolean,
+        val currentTimePeriod: String,
         val playlistTimeOfDayDayIncludes: Set<String>,
         val playlistTimeOfDayNightIncludes: Set<String>,
         val playlistCache: Boolean,
@@ -70,6 +72,9 @@ class MediaService(
         val useImmichVideos: Boolean,
         val immichUrl: String,
         val immichPath: String,
+        val useNCMemoriesVideos: Boolean,
+        val ncmemoriesUrl: String,
+        val ncmemoriesUsername: String,
         val useCustomStreams: Boolean,
         val customUrls: String,
     ) {
@@ -79,6 +84,8 @@ class MediaService(
                     add(removeDuplicates.toString())
                     add(ignoreNonManifestVideos.toString())
                     add(autoTimeOfDay.toString())
+                    // Include the active time period so a daytime cache is invalidated at night
+                    if (autoTimeOfDay) add(currentTimePeriod)
                     add(playlistTimeOfDayDayIncludes.sorted().joinToString(","))
                     add(playlistTimeOfDayNightIncludes.sorted().joinToString(","))
                     add(playlistCache.toString())
@@ -96,6 +103,9 @@ class MediaService(
                     add(useImmichVideos.toString())
                     add(immichUrl)
                     add(immichPath)
+                    add(useNCMemoriesVideos.toString())
+                    add(ncmemoriesUrl)
+                    add(ncmemoriesUsername)
                     add(useCustomStreams.toString())
                     add(customUrls)
                 }
@@ -108,6 +118,7 @@ class MediaService(
                     removeDuplicates = GeneralPrefs.removeDuplicates,
                     ignoreNonManifestVideos = GeneralPrefs.ignoreNonManifestVideos,
                     autoTimeOfDay = GeneralPrefs.autoTimeOfDay,
+                    currentTimePeriod = if (GeneralPrefs.autoTimeOfDay) TimeOfDayHelper.getCurrentTimePeriod().name else "",
                     playlistTimeOfDayDayIncludes = GeneralPrefs.playlistTimeOfDayDayIncludes,
                     playlistTimeOfDayNightIncludes = GeneralPrefs.playlistTimeOfDayNightIncludes,
                     playlistCache = GeneralPrefs.playlistCache,
@@ -121,10 +132,15 @@ class MediaService(
                     useLocalVideos = LocalMediaPrefs.enabled,
                     useSambaVideos = SambaMediaPrefs.enabled || SambaMediaPrefs2.enabled,
                     useWebDavVideos = WebDavMediaPrefs.enabled || WebDavMediaPrefs2.enabled,
-                    webDavPath = "${WebDavMediaPrefs.hostName}|${WebDavMediaPrefs.pathName}|${WebDavMediaPrefs2.hostName}|${WebDavMediaPrefs2.pathName}",
+                    webDavPath =
+                        "${WebDavMediaPrefs.hostName}|${WebDavMediaPrefs.pathName}" +
+                            "|${WebDavMediaPrefs2.hostName}|${WebDavMediaPrefs2.pathName}",
                     useImmichVideos = ImmichMediaPrefs.enabled,
                     immichUrl = ImmichMediaPrefs.url,
                     immichPath = ImmichMediaPrefs.pathName,
+                    useNCMemoriesVideos = NCMemoriesMediaPrefs.enabled,
+                    ncmemoriesUrl = NCMemoriesMediaPrefs.url,
+                    ncmemoriesUsername = NCMemoriesMediaPrefs.username,
                     useCustomStreams = CustomFeedPrefs.enabled,
                     customUrls = CustomFeedPrefs.urls,
                 )
@@ -142,6 +158,7 @@ class MediaService(
             providers.add(WebDavMediaProvider(context, WebDavMediaPrefs))
             providers.add(WebDavMediaProvider(context, WebDavMediaPrefs2))
             providers.add(ImmichMediaProvider(context, ImmichMediaPrefs))
+            providers.add(NCMemoriesMediaProvider(context, NCMemoriesMediaPrefs))
             providers.add(AppleMediaProvider(context, AppleVideoPrefs))
             providers.add(CustomFeedProvider(context, CustomFeedPrefs))
         }
@@ -283,7 +300,7 @@ class MediaService(
                             shuffle = config.shuffleMusic,
                             repeat = config.repeatMusic,
                         )
-            }
+                    }
 
             Timber.i("Total media items: ${filteredMedia.size}")
 

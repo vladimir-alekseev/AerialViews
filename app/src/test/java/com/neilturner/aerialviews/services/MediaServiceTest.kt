@@ -107,7 +107,13 @@ internal class MediaServiceTest {
         assertEquals(4, shuffled.count { it.source == AerialMediaSource.APPLE })
         assertEquals(2, shuffled.count { it.source == AerialMediaSource.AMAZON })
         assertEquals(1, shuffled.count { it.source == AerialMediaSource.LOCAL })
-        assertTrue(shuffled.take(4).map { it.source }.toSet().size > 1)
+        assertTrue(
+            shuffled
+                .take(4)
+                .map { it.source }
+                .toSet()
+                .size > 1,
+        )
     }
 
     private class FakeMediaProvider(
@@ -130,6 +136,7 @@ internal class MediaServiceTest {
             removeDuplicates = false,
             ignoreNonManifestVideos = false,
             autoTimeOfDay = false,
+            currentTimePeriod = "",
             playlistTimeOfDayDayIncludes = emptySet(),
             playlistTimeOfDayNightIncludes = emptySet(),
             playlistCache = false,
@@ -147,6 +154,9 @@ internal class MediaServiceTest {
             useImmichVideos = false,
             immichUrl = "",
             immichPath = "",
+            useNCMemoriesVideos = false,
+            ncmemoriesUrl = "",
+            ncmemoriesUsername = "",
             useCustomStreams = false,
             customUrls = "",
         )

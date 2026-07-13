@@ -13,17 +13,17 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
 import com.neilturner.aerialviews.R
+import com.neilturner.aerialviews.data.storage.FileHelper
+import com.neilturner.aerialviews.data.storage.StorageHelper
 import com.neilturner.aerialviews.models.enums.SearchType
 import com.neilturner.aerialviews.models.prefs.LocalMediaPrefs
 import com.neilturner.aerialviews.models.prefs.MediaSelection
 import com.neilturner.aerialviews.providers.LocalMediaProvider
 import com.neilturner.aerialviews.providers.ProviderFetchResult
-import com.neilturner.aerialviews.utils.DeviceHelper
-import com.neilturner.aerialviews.utils.DialogHelper
-import com.neilturner.aerialviews.utils.FileHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.PermissionHelper
-import com.neilturner.aerialviews.utils.StorageHelper
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DeviceHelper
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
 import com.neilturner.aerialviews.utils.setSummaryFromValues
 import com.neilturner.aerialviews.utils.toStringOrEmpty
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +71,6 @@ class LocalVideosFragment :
             }
 
         lifecycleScope.launch {
-            limitTextInput()
             showNvidiaShieldNoticeIfNeeded()
             updateEnabledOptions()
             updateMediaSelectionSummary()
@@ -161,16 +160,6 @@ class LocalVideosFragment :
         }
     }
 
-    private fun limitTextInput() {
-        preferenceScreen
-            .findPreference<EditTextPreference>("local_videos_media_store_filter_folder")
-            ?.setOnBindEditTextListener { it.setSingleLine() }
-
-        preferenceScreen
-            .findPreference<EditTextPreference>("local_videos_legacy_folder")
-            ?.setOnBindEditTextListener { it.setSingleLine() }
-    }
-
     private fun updateMediaSelectionSummary() {
         preferenceScreen
             .findPreference<MultiSelectListPreference>("local_media_selection")
@@ -180,9 +169,8 @@ class LocalVideosFragment :
     private suspend fun testLocalVideosFilter() =
         withContext(Dispatchers.IO) {
             val provider = LocalMediaProvider(requireContext(), LocalMediaPrefs)
-            val result = provider.fetch()
             val message =
-                when (result) {
+                when (val result = provider.fetch()) {
                     is ProviderFetchResult.Success -> result.summary
                     is ProviderFetchResult.Error -> result.message
                 }

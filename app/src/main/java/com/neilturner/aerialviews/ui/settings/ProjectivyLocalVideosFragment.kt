@@ -1,3 +1,5 @@
+package com.neilturner.aerialviews.ui.settings
+
 import android.Manifest
 import android.content.SharedPreferences
 import android.os.Build
@@ -5,7 +7,6 @@ import android.os.Bundle
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.EditTextPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
@@ -15,10 +16,10 @@ import com.neilturner.aerialviews.models.prefs.MediaSelection
 import com.neilturner.aerialviews.models.prefs.ProjectivyLocalMediaPrefs
 import com.neilturner.aerialviews.providers.LocalMediaProvider
 import com.neilturner.aerialviews.providers.ProviderFetchResult
-import com.neilturner.aerialviews.utils.DeviceHelper
-import com.neilturner.aerialviews.utils.DialogHelper
-import com.neilturner.aerialviews.utils.MenuStateFragment
-import com.neilturner.aerialviews.utils.PermissionHelper
+import com.neilturner.aerialviews.ui.controls.MenuStateFragment
+import com.neilturner.aerialviews.ui.helpers.DeviceHelper
+import com.neilturner.aerialviews.ui.helpers.DialogHelper
+import com.neilturner.aerialviews.ui.helpers.PermissionHelper
 import com.neilturner.aerialviews.utils.setSummaryFromValues
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -64,7 +65,6 @@ class ProjectivyLocalVideosFragment :
             }
 
         lifecycleScope.launch {
-            limitTextInput()
             showNvidiaShieldNoticeIfNeeded()
             enableMediaStoreOptions()
             updateMediaSelectionSummary()
@@ -113,12 +113,6 @@ class ProjectivyLocalVideosFragment :
         preferenceScreen.findPreference<Preference>("projectivy_local_videos_media_store_notice")?.isEnabled = true
     }
 
-    private fun limitTextInput() {
-        preferenceScreen
-            .findPreference<EditTextPreference>("projectivy_local_videos_media_store_filter_folder")
-            ?.setOnBindEditTextListener { it.setSingleLine() }
-    }
-
     private fun updateMediaSelectionSummary() {
         preferenceScreen
             .findPreference<MultiSelectListPreference>("projectivy_local_media_selection")
@@ -128,9 +122,8 @@ class ProjectivyLocalVideosFragment :
     private suspend fun testLocalVideosFilter() =
         withContext(Dispatchers.IO) {
             val provider = LocalMediaProvider(requireContext(), ProjectivyLocalMediaPrefs)
-            val result = provider.fetch()
             val message =
-                when (result) {
+                when (val result = provider.fetch()) {
                     is ProviderFetchResult.Success -> result.summary
                     is ProviderFetchResult.Error -> result.message
                 }

@@ -1,12 +1,14 @@
 package com.neilturner.aerialviews.services
 
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.neilturner.aerialviews.models.music.MusicPlaylist
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.ui.core.VideoPlayerHelper
-import com.neilturner.aerialviews.utils.VolumeHelper
+import com.neilturner.aerialviews.ui.helpers.VolumeHelper
 import timber.log.Timber
 
 class MusicPlayer(
@@ -23,16 +25,19 @@ class MusicPlayer(
     var onMediaItemChanged: (() -> Unit)? = null
 
     fun createPlayer(): ExoPlayer {
-        player = VideoPlayerHelper.buildAudioPlayer(context)
-        player?.addListener(object : Player.Listener {
-            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-                onMediaItemChanged?.invoke()
-            }
-        })
+        player = VideoPlayerHelper.buildAudioPlayer(context.applicationContext)
+        player?.addListener(
+            object : Player.Listener {
+                override fun onMediaItemTransition(
+                    mediaItem: androidx.media3.common.MediaItem?,
+                    reason: Int,
+                ) {
+                    onMediaItemChanged?.invoke()
+                }
+            },
+        )
         return player!!
     }
-
-    fun getPlayer(): ExoPlayer? = player
 
     fun getCurrentTrackIndex(): Int = player?.currentMediaItemIndex ?: 0
 
@@ -44,6 +49,7 @@ class MusicPlayer(
         }
     }
 
+    @OptIn(UnstableApi::class)
     fun play() {
         val player =
             player ?: run {
@@ -53,7 +59,7 @@ class MusicPlayer(
 
         // Load all tracks into ExoPlayer's queue with correct data source per track
         playlist.tracks.forEach { track ->
-            val mediaSource = VideoPlayerHelper.createAudioMediaSource(context, track)
+            val mediaSource = VideoPlayerHelper.createAudioMediaSource(context.applicationContext, track)
             player.addMediaSource(mediaSource)
         }
         player.prepare()
