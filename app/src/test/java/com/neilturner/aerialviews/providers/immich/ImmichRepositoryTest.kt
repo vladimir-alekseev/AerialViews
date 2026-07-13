@@ -284,7 +284,12 @@ internal class ImmichRepositoryTest {
 
             coEvery { api.getSharedAlbumV3(key = "12345", slug = null) } returns Response.success(sharedResponse)
             coEvery { api.getSharedAlbumByIdV3(albumId = "album-1", key = "resolved-key") } returns Response.success(albumMeta)
-            coEvery { api.getSharedAlbumAssets(key = "resolved-key", searchRequest = any()) } returns Response.success(searchResponse)
+            coEvery {
+                api.getSharedAlbumAssets(
+                    key = "resolved-key",
+                    searchRequest = match { it.albumIds == listOf("album-1") },
+                )
+            } returns Response.success(searchResponse)
 
             val result = repository.getSharedAlbumFromAPI()
 
@@ -406,7 +411,12 @@ internal class ImmichRepositoryTest {
             val searchResponse = SearchAssetsResponse(assets = AssetsResult(items = searchAssets))
 
             coEvery { api.getAlbum(apiKey = "test-api-key", albumId = "album-1") } returns Response.success(albumMeta)
-            coEvery { api.getAlbumAssets(apiKey = "test-api-key", searchRequest = any()) } returns Response.success(searchResponse)
+            coEvery {
+                api.getAlbumAssets(
+                    apiKey = "test-api-key",
+                    searchRequest = match { it.albumIds == listOf("album-1") },
+                )
+            } returns Response.success(searchResponse)
 
             val result = repository.getSelectedAlbumFromAPI()
 
@@ -436,13 +446,13 @@ internal class ImmichRepositoryTest {
             coEvery {
                 api.getAlbumAssets(
                     apiKey = "test-api-key",
-                    searchRequest = match { it.page == 1 },
+                    searchRequest = match { it.page == 1 && it.albumIds == listOf("album-1") },
                 )
             } returns Response.success(page1Response)
             coEvery {
                 api.getAlbumAssets(
                     apiKey = "test-api-key",
-                    searchRequest = match { it.page == 2 },
+                    searchRequest = match { it.page == 2 && it.albumIds == listOf("album-1") },
                 )
             } returns Response.success(page2Response)
 

@@ -266,7 +266,7 @@ class ImmichRepository(
         while (true) {
             val request =
                 SearchMetadataRequest(
-                    albumId = albumId,
+                    albumIds = listOf(albumId),
                     withExif = true,
                     size = pageSize,
                     page = page,
@@ -300,7 +300,7 @@ class ImmichRepository(
         while (true) {
             val request =
                 SearchMetadataRequest(
-                    albumId = albumId,
+                    albumIds = listOf(albumId),
                     withExif = true,
                     size = pageSize,
                     page = page,
