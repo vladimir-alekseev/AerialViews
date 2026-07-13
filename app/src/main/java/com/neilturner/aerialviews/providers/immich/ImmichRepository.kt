@@ -20,6 +20,8 @@ class ImmichRepository(
 ) {
     lateinit var server: String
 
+    private val apiKey: String get() = prefs.apiKey.trim()
+
     private val immichClient by lazy {
         apiOverride ?: run {
             server = UrlParser.parseServerUrl(prefs.url)
@@ -304,7 +306,7 @@ class ImmichRepository(
                     page = page,
                     type = getTypeFilter(),
                 )
-            val response = immichClient.getAlbumAssets(apiKey = prefs.apiKey, searchRequest = request)
+            val response = immichClient.getAlbumAssets(apiKey = apiKey, searchRequest = request)
             if (response.isSuccessful) {
                 val items = response.body()?.assets?.items ?: break
                 allAssets.addAll(items.map { it.copy(albumName = albumName) })
@@ -332,7 +334,7 @@ class ImmichRepository(
 
                 Timber.d("Attempting to fetch ${selectedAlbumIds.size} selected albums")
                 Timber.d("Selected Album IDs: $selectedAlbumIds")
-                Timber.d("API Key (first 5 chars): ${prefs.apiKey.take(5)}...")
+                Timber.d("API Key (first 5 chars): ${apiKey.take(5)}...")
 
                 val serverVersion = getServerVersion()
 
@@ -343,7 +345,7 @@ class ImmichRepository(
                 val albumDeferreds =
                     selectedAlbumIds.map { albumId ->
                         async {
-                            Pair(albumId, immichClient.getAlbum(apiKey = prefs.apiKey, albumId = albumId))
+                            Pair(albumId, immichClient.getAlbum(apiKey = apiKey, albumId = albumId))
                         }
                     }
 
@@ -444,7 +446,7 @@ class ImmichRepository(
                     withExif = true,
                     type = getTypeFilter(),
                 )
-            val response = immichClient.getFavoriteAssets(apiKey = prefs.apiKey, searchRequest = searchRequest)
+            val response = immichClient.getFavoriteAssets(apiKey = apiKey, searchRequest = searchRequest)
             if (response.isSuccessful) {
                 val searchResponse = response.body()
                 val allAssets = searchResponse?.assets?.items ?: emptyList()
@@ -478,7 +480,7 @@ class ImmichRepository(
                                         withExif = true,
                                         type = getTypeFilter(),
                                     )
-                                immichClient.getFavoriteAssets(apiKey = prefs.apiKey, searchRequest = searchRequest)
+                                immichClient.getFavoriteAssets(apiKey = apiKey, searchRequest = searchRequest)
                             }
                         }
 
@@ -511,7 +513,7 @@ class ImmichRepository(
                     withExif = true,
                     type = getTypeFilter(),
                 )
-            val response = immichClient.getRandomAssets(apiKey = prefs.apiKey, searchRequest = searchRequest)
+            val response = immichClient.getRandomAssets(apiKey = apiKey, searchRequest = searchRequest)
             if (response.isSuccessful) {
                 val assets = response.body() ?: emptyList()
                 Timber.d("Successfully fetched ${assets.size} random assets")
@@ -538,7 +540,7 @@ class ImmichRepository(
                     withExif = true,
                     type = getTypeFilter(),
                 )
-            val response = immichClient.getRecentAssets(apiKey = prefs.apiKey, searchRequest = searchRequest)
+            val response = immichClient.getRecentAssets(apiKey = apiKey, searchRequest = searchRequest)
             if (response.isSuccessful) {
                 val searchResponse = response.body()
                 val assets = searchResponse?.assets?.items ?: emptyList()
@@ -563,17 +565,17 @@ class ImmichRepository(
                 val regularDeferred =
                     async {
                         if (serverVersion >= 3) {
-                            immichClient.getAlbumsV3(apiKey = prefs.apiKey)
+                            immichClient.getAlbumsV3(apiKey = apiKey)
                         } else {
-                            immichClient.getAlbums(apiKey = prefs.apiKey)
+                            immichClient.getAlbums(apiKey = apiKey)
                         }
                     }
                 val sharedDeferred =
                     async {
                         if (serverVersion >= 3) {
-                            immichClient.getAlbumsV3(apiKey = prefs.apiKey, isShared = true)
+                            immichClient.getAlbumsV3(apiKey = apiKey, isShared = true)
                         } else {
-                            immichClient.getAlbums(apiKey = prefs.apiKey, shared = true)
+                            immichClient.getAlbums(apiKey = apiKey, shared = true)
                         }
                     }
 

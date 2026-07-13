@@ -751,5 +751,20 @@ internal class ImmichRepositoryTest {
 
             assertTrue(result.isFailure)
         }
+
+        @Test
+        fun `trims whitespace from API key before calling API`() = runTest {
+            every { prefs.apiKey } returns "test-api-key\n"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
+
+            val albums = listOf(Album(id = "a1", name = "Album 1"))
+            coEvery { api.getAlbums(apiKey = "test-api-key") } returns Response.success(albums)
+            coEvery { api.getAlbums(apiKey = "test-api-key", shared = true) } returns Response.success(emptyList())
+
+            val result = repository.fetchAlbums()
+
+            assertTrue(result.isSuccess)
+            coVerify { api.getAlbums(apiKey = "test-api-key") }
+        }
     }
 }

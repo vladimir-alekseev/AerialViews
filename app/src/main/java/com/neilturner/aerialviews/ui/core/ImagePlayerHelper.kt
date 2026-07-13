@@ -80,7 +80,7 @@ internal object ImagePlayerHelper {
                         Timber.d("Adding X-API-Key header")
                         originalRequest
                             .newBuilder()
-                            .addHeader("X-API-Key", ImmichMediaPrefs.apiKey)
+                            .addHeader("X-API-Key", ImmichMediaPrefs.apiKey.trim())
                             .build()
                     }
 
