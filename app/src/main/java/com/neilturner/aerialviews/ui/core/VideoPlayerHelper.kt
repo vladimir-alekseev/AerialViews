@@ -24,7 +24,9 @@ import com.neilturner.aerialviews.models.enums.VideoScale
 import com.neilturner.aerialviews.models.music.MusicTrack
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 import com.neilturner.aerialviews.models.prefs.ImmichMediaPrefs
+import com.neilturner.aerialviews.models.prefs.NCMemoriesMediaPrefs
 import com.neilturner.aerialviews.models.videos.AerialMedia
+import com.neilturner.aerialviews.providers.ncmemories.NCMemoriesDataSourceFactory
 import com.neilturner.aerialviews.providers.samba.SambaDataSourceFactory
 import com.neilturner.aerialviews.providers.webdav.WebDavDataSourceFactory
 import com.neilturner.aerialviews.services.philips.CustomRendererFactory
@@ -207,6 +209,18 @@ object VideoPlayerHelper {
                 .createMediaSource(mediaItem)
         }
 
+        AerialMediaSource.NCMEMORIES -> {
+            // If SSL validation is disabled, we need to set the appropriate flags
+            if (!NCMemoriesMediaPrefs.validateSsl) {
+                System.setProperty("javax.net.ssl.trustAll", "true")
+            }
+
+            Timber.d("Setting up Nextcloud Memories media source with URI: ${mediaItem.localConfiguration?.uri}")
+            ProgressiveMediaSource
+                .Factory(NCMemoriesDataSourceFactory())
+                .createMediaSource(mediaItem)
+        }
+
         AerialMediaSource.WEBDAV -> {
             ProgressiveMediaSource
                 .Factory(WebDavDataSourceFactory())
@@ -228,7 +242,7 @@ object VideoPlayerHelper {
     ): Pair<Long, Long> {
         val maxVideoLength = prefs.maxVideoLength.toLong() * 1000
         val isLengthLimited = maxVideoLength >= TEN_SECONDS
-        val isShortVideo = player.duration < maxVideoLength
+        val isShortVideo = player.duration in 1..<maxVideoLength
 
         if (type == AerialMediaSource.RTSP) {
             Timber.i("Calculating RTSP stream length...")

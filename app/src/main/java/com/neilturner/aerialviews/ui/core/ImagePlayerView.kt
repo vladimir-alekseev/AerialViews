@@ -127,7 +127,10 @@ class ImagePlayerView : FrameLayout {
                 return@launch
             }
 
-            if (media.source == AerialMediaSource.IMMICH) {
+            if (
+                (media.source == AerialMediaSource.IMMICH) ||
+                (media.source == AerialMediaSource.NCMEMORIES)
+                ) {
                 loadImage(media, baseStream)
                 return@launch
             }
@@ -266,10 +269,6 @@ class ImagePlayerView : FrameLayout {
             return false
         }
 
-        if (resolveForegroundScaleType(imageWidth, imageHeight) != ImageView.ScaleType.FIT_CENTER) {
-            return false
-        }
-
         val (containerWidth, containerHeight) = resolveTargetSize()
         if (containerWidth <= 0 || containerHeight <= 0) {
             return false
@@ -392,7 +391,9 @@ class ImagePlayerView : FrameLayout {
 
     private fun onPlayerError() {
         removeCallbacks(finishedRunnable)
-        postDelayed(errorRunnable, ScreenController.ERROR_DELAY)
+        // Notify immediately; the single error backoff is applied by
+        // ScreenController.handleError(). Delaying here too would double it.
+        post(errorRunnable)
     }
 
     fun setOnPlayerListener(listener: ScreenController) {
