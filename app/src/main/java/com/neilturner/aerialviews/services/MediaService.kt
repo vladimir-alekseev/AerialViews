@@ -1,6 +1,7 @@
 package com.neilturner.aerialviews.services
 
 import android.content.Context
+import android.os.Bundle
 import com.neilturner.aerialviews.models.LoadingStatus
 import com.neilturner.aerialviews.models.MediaFetchResult
 import com.neilturner.aerialviews.models.MediaPlaylist
@@ -23,6 +24,7 @@ import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs
 import com.neilturner.aerialviews.models.prefs.SambaMediaPrefs2
 import com.neilturner.aerialviews.models.prefs.WebDavMediaPrefs
 import com.neilturner.aerialviews.models.prefs.WebDavMediaPrefs2
+import com.neilturner.aerialviews.models.videos.AerialMedia
 import com.neilturner.aerialviews.providers.AmazonMediaProvider
 import com.neilturner.aerialviews.providers.AppleMediaProvider
 import com.neilturner.aerialviews.providers.Comm1MediaProvider
@@ -36,6 +38,7 @@ import com.neilturner.aerialviews.providers.samba.SambaMediaProvider
 import com.neilturner.aerialviews.providers.webdav.WebDavMediaProvider
 import com.neilturner.aerialviews.services.MediaServiceHelper.addMetadataToManifestVideos
 import com.neilturner.aerialviews.services.MediaServiceHelper.buildProviderContent
+import com.neilturner.aerialviews.utils.FirebaseHelper
 import com.neilturner.aerialviews.services.MediaServiceHelper.weightedInterleavedShuffle
 import com.neilturner.aerialviews.utils.filename
 import kotlinx.coroutines.Dispatchers
@@ -301,6 +304,9 @@ class MediaService(
 
             Timber.i("Total media items: ${filteredMedia.size}")
 
+            // Track enabled media sources and media counts
+            trackMediaUsage(filteredMedia)
+
             if (config.playlistCache && cacheRepo != null) {
                 // Cache enabled: save to DB, return windowed playlist that streams from DB
                 cacheRepo.cachePlaylist(
@@ -325,5 +331,46 @@ class MediaService(
                 mediaPlaylist = MediaPlaylist(filteredMedia),
                 musicPlaylist = musicPlaylist,
             )
+        }
+
+    private fun trackMediaUsage(media: List<AerialMedia>) {
+        // Count media by source
+        val sourcesCounts = media.groupBy { it.source }.mapValues { it.value.size }
+
+        // Build parameters with individual source counts
+        val bundle = Bundle()
+        
+        // Add count for each source (generalised)
+        sourcesCounts.forEach { (source, count) ->
+            if (source != AerialMediaSource.UNKNOWN) {
+                bundle.putString("source_${source.name.lowercase()}", generalizeCount(count))
+            }
+        }
+
+        // Count videos and photos
+        val videoCount = media.count { it.type == AerialMediaType.VIDEO }
+        val photoCount = media.count { it.type == AerialMediaType.IMAGE }
+
+        // Add generalised video and photo counts
+        bundle.putString("total_videos", generalizeCount(videoCount))
+        bundle.putString("total_photos", generalizeCount(photoCount))
+        bundle.putString("total_sources", sourcesCounts.size.toString())
+
+        // Log analytics event
+        FirebaseHelper.analyticsEvent(
+            "media_sources_usage",
+            bundle,
+        )
+
+        Timber.d("Media usage tracked: ${bundle.keySet().joinToString(", ") { "$it=${bundle.getString(it)}" }}")
+    }
+
+    private fun generalizeCount(count: Int): String =
+        when {
+            count == 0 -> "0"
+            count < 10 -> "<10"
+            count < 100 -> "${(count / 10) * 10}"  // Round to nearest 10
+            count < 1000 -> "${(count / 100) * 100}"  // Round to nearest 100
+            else -> "${(count / 1000) * 1000}"  // Round to nearest 1000
         }
 }
