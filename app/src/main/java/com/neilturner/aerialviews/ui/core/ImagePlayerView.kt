@@ -3,6 +3,7 @@ package com.neilturner.aerialviews.ui.core
 import android.content.Context
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -11,6 +12,7 @@ import coil3.ImageLoader
 import coil3.asDrawable
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import com.hierynomus.protocol.transport.TransportException
 import com.hierynomus.smbj.common.SMBRuntimeException
 import com.neilturner.aerialviews.models.enums.AerialMediaSource
@@ -195,6 +197,9 @@ class ImagePlayerView : FrameLayout {
                     .Builder(context)
                     .data(data)
                     .size(targetWidth, targetHeight)
+                    // The pre-S blurred background is a CPU bitmap operation. Coil hardware
+                    // bitmaps cannot be drawn into the software canvas used by Drawable.toBitmap().
+                    .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S || !GeneralPrefs.photoBackgroundBlurEnabled)
                     .target(
                         onStart = {
                             // resetImageTransforms()
