@@ -269,10 +269,6 @@ class ImagePlayerView : FrameLayout {
             return false
         }
 
-        if (resolveForegroundScaleType(imageWidth, imageHeight) != ImageView.ScaleType.FIT_CENTER) {
-            return false
-        }
-
         val (containerWidth, containerHeight) = resolveTargetSize()
         if (containerWidth <= 0 || containerHeight <= 0) {
             return false
