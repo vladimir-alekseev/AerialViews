@@ -238,21 +238,31 @@ class ImmichVideosFragment :
 
         if (ImmichMediaPrefs.url.isNotEmpty() && ImmichMediaPrefs.apiKey.isNotEmpty()) {
             val provider = ImmichMediaProvider(requireContext(), ImmichMediaPrefs)
-            provider.fetchAlbums().fold(
-                onSuccess = { albums ->
-                    progressDialog.dismiss()
-                    showAlbumMultiSelectDialog(albums)
-                },
-                onFailure = { exception ->
-                    Timber.e(exception, "Failed to load albums for selection")
-                    progressDialog.dismiss()
-                    DialogHelper.show(
-                        requireContext(),
-                        "Error",
-                        "Failed to load albums: ${exception.message}",
-                    )
-                },
-            )
+            try {
+                provider.fetchAlbums().fold(
+                    onSuccess = { albums ->
+                        progressDialog.dismiss()
+                        showAlbumMultiSelectDialog(albums)
+                    },
+                    onFailure = { exception ->
+                        Timber.e(exception, "Failed to load albums for selection")
+                        progressDialog.dismiss()
+                        DialogHelper.show(
+                            requireContext(),
+                            "Error",
+                            "Failed to load albums: ${exception.message}",
+                        )
+                    },
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "Exception while fetching albums")
+                progressDialog.dismiss()
+                DialogHelper.show(
+                    requireContext(),
+                    "Error",
+                    "Failed to load albums: ${e.message}",
+                )
+            }
         } else {
             progressDialog.dismiss()
             DialogHelper.show(
