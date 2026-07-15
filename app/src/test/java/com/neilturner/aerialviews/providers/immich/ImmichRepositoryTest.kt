@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import java.net.SocketTimeoutException
 import okhttp3.ResponseBody
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -760,6 +761,23 @@ internal class ImmichRepositoryTest {
             val result = repository.fetchAlbums()
 
             assertTrue(result.isFailure)
+        }
+
+        @Test
+        fun `network timeout escapes coroutineScope - requires Fragment handler`() = runTest {
+
+            every { prefs.apiKey } returns "test-api-key"
+            coEvery { api.getServerVersion() } returns Response.success(serverVersionResponse(2))
+
+            coEvery { api.getAlbums(apiKey = "test-api-key") } throws SocketTimeoutException("timed out")
+            coEvery { api.getAlbums(apiKey = "test-api-key", shared = true) } throws SocketTimeoutException("timed out")
+
+            // When async blocks throw in coroutineScope, the exception escapes the
+            // inner try-catch. This is why ImmichVideosFragment needs a
+            // CoroutineExceptionHandler on its lifecycleScope.launch calls.
+            assertThrows<SocketTimeoutException> {
+                repository.fetchAlbums()
+            }
         }
 
         @Test
