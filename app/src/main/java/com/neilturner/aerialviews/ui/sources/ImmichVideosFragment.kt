@@ -18,6 +18,7 @@ import com.neilturner.aerialviews.providers.immich.ImmichMediaProvider
 import com.neilturner.aerialviews.ui.controls.MenuStateFragment
 import com.neilturner.aerialviews.ui.helpers.DialogHelper
 import com.neilturner.aerialviews.utils.setSummaryFromValues
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -101,13 +102,17 @@ class ImmichVideosFragment :
             true
         }
 
+        val networkExceptionHandler = CoroutineExceptionHandler { _, exception ->
+            Timber.e(exception, "Unhandled network error")
+        }
+
         findPreference<Preference>("immich_media_test_connection")?.setOnPreferenceClickListener {
-            lifecycleScope.launch { testImmichConnection() }
+            lifecycleScope.launch(networkExceptionHandler) { testImmichConnection() }
             true
         }
 
         selectAlbumsPreference.setOnPreferenceClickListener {
-            lifecycleScope.launch { pickAlbums() }
+            lifecycleScope.launch(networkExceptionHandler) { pickAlbums() }
             true
         }
     }
