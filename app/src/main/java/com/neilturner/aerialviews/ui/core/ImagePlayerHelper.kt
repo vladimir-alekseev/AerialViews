@@ -226,7 +226,7 @@ internal object ImagePlayerHelper {
         val (hostName, shareName, path, authContext, config) = parseSambaParams(uri)
         val smbClient = SMBClient(config)
         return try {
-            val (session, share) = connectSamba(smbClient, hostName, shareName, authContext, startTime)
+            val (session, share) = connectSamba(smbClient, hostName, shareName, authContext)
             val openStartTime = System.currentTimeMillis()
             val file =
                 share.openFile(
@@ -291,7 +291,6 @@ internal object ImagePlayerHelper {
         hostName: String,
         shareName: String,
         authContext: AuthenticationContext,
-        startTime: Long,
     ): Pair<Session, DiskShare> {
         val connectStartTime = System.currentTimeMillis()
         val connection = smbClient.connect(hostName)

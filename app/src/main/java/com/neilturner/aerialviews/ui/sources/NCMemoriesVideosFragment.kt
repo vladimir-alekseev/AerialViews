@@ -71,7 +71,7 @@ class NCMemoriesVideosFragment :
                 UrlParser.parseServerUrl(newValue.toString())
                 clearSelectedAlbumsIfChanged(urlPreference.text.orEmpty(), newValue.toString())
                 true
-            } catch (@Suppress("unused") e: IllegalArgumentException) {
+            } catch (e: IllegalArgumentException) {
                 AlertDialog
                     .Builder(requireContext())
                     .setMessage(getString(R.string.ncmemories_media_url_invalid))

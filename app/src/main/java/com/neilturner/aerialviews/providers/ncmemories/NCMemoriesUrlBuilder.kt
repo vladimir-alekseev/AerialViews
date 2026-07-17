@@ -1,5 +1,3 @@
-@file:Suppress("JoinDeclarationAndAssignment")
-
 package com.neilturner.aerialviews.providers.ncmemories
 
 import android.content.res.Resources
@@ -22,7 +20,7 @@ class NCMemoriesUrlBuilder(
         isVideo: Boolean,
         etag: String,
     ): Uri {
-        val fileIDString = fileID.toString()
+		val fileIDString = fileID.toString()
 	    val url: String = if (isVideo) {
 	            if (prefs.videoType == NCMemoriesVideoType.TRANSCODED) {
 	                val client = "aerialviews"

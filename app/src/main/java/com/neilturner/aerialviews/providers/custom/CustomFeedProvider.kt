@@ -235,9 +235,8 @@ class CustomFeedProvider(
                         if (csvItems.isNotEmpty()) {
                             validCsvUrls.add(url)
                             Timber.i(
-                                "Found ${csvItems.size} media items in CSV: $url. " +
-                                    "Videos: ${csvItems.count { it.type == AerialMediaType.VIDEO }}, " +
-                                    "photos: ${csvItems.count { it.type == AerialMediaType.IMAGE }}",
+                                "%snull", "Found ${csvItems.size} media items in CSV: $url. " +
+                                    "Videos: ${csvItems.count { it.type == AerialMediaType.VIDEO }}, ",
                             )
                         } else {
                             errorMessages[url] = "CSV contains no supported media items"
@@ -327,9 +326,8 @@ class CustomFeedProvider(
                 .joinToString(",")
         prefs.urlsCache = allValidUrls
         Timber.i(
-            "Custom feed valid URL cache updated. Entries: ${validEntriesUrls.size}, " +
-                "RTSP: ${validRtspUrls.size}, HLS: ${validHlsUrls.size}, CSV: ${validCsvUrls.size}, " +
-                "cache: $allValidUrls",
+            "%snull", "Custom feed valid URL cache updated. Entries: ${validEntriesUrls.size}, " +
+                "RTSP: ${validRtspUrls.size}, HLS: ${validHlsUrls.size}, CSV: ${validCsvUrls.size}, ",
         )
 
         // Build result message
@@ -589,9 +587,8 @@ class CustomFeedProvider(
                 )
                 val items = CustomFeedCsvParser.parse(body)
                 Timber.i(
-                    "Custom feed CSV parse result for $url: items=${items.size}, " +
-                        "videos=${items.count { it.type == AerialMediaType.VIDEO }}, " +
-                        "photos=${items.count { it.type == AerialMediaType.IMAGE }}",
+                    "%snull", "Custom feed CSV parse result for $url: items=${items.size}, " +
+                        "videos=${items.count { it.type == AerialMediaType.VIDEO }}, ",
                 )
                 items.take(5).forEachIndexed { index, item ->
                     Timber.d(

@@ -33,7 +33,7 @@ import me.kosert.flowbus.GlobalBus
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
-@Suppress("SameParameterValue")
+@Suppress("SameParameterValue", "JoinDeclarationAndAssignment")
 class VideoPlayerView
     @OptIn(UnstableApi::class)
     @JvmOverloads
