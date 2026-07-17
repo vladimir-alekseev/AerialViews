@@ -13,11 +13,11 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.hours
 
 object NetworkHelpers {
-    private val timeout = 10L // Seconds = socket, etc timeout
+    private const val timeout = 10L // Seconds = socket, etc timeout
     private val timeoutUnits = TimeUnit.SECONDS
-    private val cacheSize = 1 * 1024 * 1024L // 10 MB
+    private const val cacheSize = 1 * 1024 * 1024L // 10 MB
     private val offlineCacheTimeout = 2.hours.inWholeSeconds.toInt()
-    private val onlineCacheTimeout = 60 // Minutes
+    private const val onlineCacheTimeout = 60 // Minutes
 
     fun isNetworkAvailable(context: Context): Boolean = NetworkHelper.isNetworkAvailable(context)
 

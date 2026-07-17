@@ -119,7 +119,6 @@ class NCMemoriesDataSource : BaseDataSource(true) {
     }
 }
 
-@Suppress("unused")
 class NCMemoriesDataSourceFactory : DataSource.Factory {
     @SuppressLint("UnsafeOptInUsageError")
     override fun createDataSource(): DataSource = NCMemoriesDataSource()

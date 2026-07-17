@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.URLEncoder
+import kotlin.time.Duration.Companion.milliseconds
 
 class SambaMediaProvider(
     context: Context,
@@ -51,7 +52,7 @@ class SambaMediaProvider(
 
                 while (waitedSeconds < maxWaitSeconds) {
                     val sleepSeconds = minOf(pollIntervalSeconds, maxWaitSeconds - waitedSeconds)
-                    delay(sleepSeconds * 1000)
+                    delay((sleepSeconds * 1000).milliseconds)
                     waitedSeconds += sleepSeconds
 
                     reachable = NetworkHelper.isHostReachable(prefs.hostName, 445)

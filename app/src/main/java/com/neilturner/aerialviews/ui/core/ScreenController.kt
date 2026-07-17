@@ -66,6 +66,7 @@ import kotlinx.coroutines.runBlocking
 import me.kosert.flowbus.GlobalBus
 import timber.log.Timber
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 class ScreenController(
     val context: Context,
@@ -309,7 +310,7 @@ class ScreenController(
         Timber.i("Scheduling sleep timer for $minutes minute(s)")
         sleepTimerJob =
             mainScope.launch {
-                delay(minutes * 60_000L)
+                delay((minutes * 60_000L).milliseconds)
                 if (!blackOutMode) {
                     Timber.i("Sleep timer finished - toggling blackout mode")
                     toggleBlackOutMode()
@@ -851,7 +852,7 @@ class ScreenController(
 
     private fun handleError() {
         mainScope.launch {
-            delay(ERROR_DELAY)
+            delay(ERROR_DELAY.milliseconds)
             if (loadingView.isVisible) {
                 loadNextItem()
             } else {

@@ -23,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 
 class NowPlayingOverlay : AppCompatTextView {
     var type = OverlayType.MUSIC1
@@ -125,7 +126,7 @@ class NowPlayingOverlay : AppCompatTextView {
             .setDuration(300)
             .start()
         Timber.i("$type: Fading out...")
-        delay(300)
+        delay(300.milliseconds)
     }
 
     private suspend fun fadeIn() {
@@ -134,7 +135,7 @@ class NowPlayingOverlay : AppCompatTextView {
             .setDuration(300)
             .start()
         Timber.i("$type: Fading in...")
-        delay(300)
+        delay(300.milliseconds)
     }
 
     private fun updateText(): Boolean {

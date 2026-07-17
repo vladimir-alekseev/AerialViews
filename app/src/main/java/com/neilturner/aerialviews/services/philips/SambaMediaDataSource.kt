@@ -1,6 +1,7 @@
 package com.neilturner.aerialviews.services.philips
 
 import android.media.MediaDataSource
+import androidx.core.net.toUri
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
@@ -16,7 +17,7 @@ class SambaMediaDataSource(uriString: String) : MediaDataSource() {
     private var currentPosition: Long = 0
 
     init {
-        val uri = android.net.Uri.parse(uriString)
+        val uri = uriString.toUri()
         val hostName = uri.host.orEmpty()
         val (userName, password) = SambaHelper.parseUserInfo(uri)
         val domainName = uri.getQueryParameter("domain").orEmpty().ifEmpty { "WORKGROUP" }
