@@ -118,6 +118,7 @@ class ScreenController(
     private val gradientTopView: View
     private val gradientBottomView: View
     private val progressBarView: ProgressBar
+    private val notificationContainer: ViewGroup
     val view: View
 
     private val topLeftIds: List<Int>
@@ -181,6 +182,7 @@ class ScreenController(
 
         brightnessView = binding.brightnessView
         progressBarView = binding.progressBar
+        notificationContainer = view.findViewById(R.id.notification_container)
 
         // Setup loading message or hide it
         if (GeneralPrefs.showLoadingText) {
@@ -796,7 +798,7 @@ class ScreenController(
         }
 
         // Show notification
-        NotificationHelper.show(this.view as ViewGroup, "Brightness: $newBrightness%")
+        NotificationHelper.show(notificationContainer, "Brightness: $newBrightness%")
     }
 
     fun toggleMute() {
@@ -860,7 +862,7 @@ class ScreenController(
 
     private fun handlePlaybackSpeedChanged() {
         val message = resources.getString(R.string.playlist_playback_speed_changed, GeneralPrefs.playbackSpeed + "x")
-        NotificationHelper.show(view as ViewGroup, message)
+        NotificationHelper.show(notificationContainer, message)
     }
 
     override fun onVideoPlaybackSpeedChanged() = handlePlaybackSpeedChanged()

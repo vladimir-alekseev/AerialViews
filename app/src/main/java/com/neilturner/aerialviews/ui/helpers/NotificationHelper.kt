@@ -1,5 +1,6 @@
 package com.neilturner.aerialviews.ui.helpers
 
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -7,11 +8,12 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
 import com.neilturner.aerialviews.R
+import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 
 object NotificationHelper {
     private const val DEFAULT_DURATION_MS = 3000L
     private const val FADE_DURATION_MS = 200L
-    private const val BOTTOM_MARGIN_DP = 48
+    private const val BOTTOM_MARGIN_DP = 16
 
     fun show(
         view: ViewGroup,
@@ -21,8 +23,9 @@ object NotificationHelper {
         val context = view.context
         val textView =
             TextView(context).apply {
-                setText(R.style.OverlayText)
                 text = message
+                setTextColor(Color.BLACK)
+                typeface = FontHelper.getTypeface(context, GeneralPrefs.fontTypeface, 400)
                 setBackgroundResource(R.drawable.bg_notification)
                 gravity = Gravity.CENTER
             }
@@ -36,7 +39,7 @@ object NotificationHelper {
                 bottomMargin = (BOTTOM_MARGIN_DP * context.resources.displayMetrics.density).toInt()
             }
 
-        view.addView(textView, params)
+        view.addView(textView, view.childCount, params)
 
         // Fade in
         textView.alpha = 0f

@@ -137,10 +137,16 @@ class VideoPlayerView
 
             setupAlmostFinishedRunnable()
 
-            val parent = parent as? ViewGroup
-            if (parent != null) {
+            // Traverse up to root view to find notification container
+            var viewGroup = parent as? ViewGroup
+            var notificationContainer: ViewGroup? = null
+            while (viewGroup != null && notificationContainer == null) {
+                notificationContainer = viewGroup.findViewById(R.id.notification_container)
+                viewGroup = viewGroup.parent as? ViewGroup
+            }
+            if (notificationContainer != null) {
                 val message = if (GeneralPrefs.loopUntilSkipped) "Looping enabled" else "Looping disabled"
-                NotificationHelper.show(parent, message)
+                NotificationHelper.show(notificationContainer, message)
             }
         }
 
