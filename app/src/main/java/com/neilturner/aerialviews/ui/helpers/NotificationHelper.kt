@@ -11,15 +11,23 @@ import com.neilturner.aerialviews.R
 import com.neilturner.aerialviews.models.prefs.GeneralPrefs
 
 object NotificationHelper {
-    private const val DEFAULT_DURATION_MS = 3000L
+    private const val DEFAULT_DURATION_MS = 2000L
     private const val FADE_DURATION_MS = 200L
     private const val BOTTOM_MARGIN_DP = 16
+
+    private var currentTextView: TextView? = null
+    private var currentContainer: ViewGroup? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var dismissRunnable: Runnable? = null
 
     fun show(
         view: ViewGroup,
         message: String,
         duration: Long = DEFAULT_DURATION_MS,
     ) {
+        // Remove existing notification immediately
+        removeCurrentNotification()
+
         val context = view.context
         val textView =
             TextView(context).apply {
@@ -40,6 +48,8 @@ object NotificationHelper {
             }
 
         view.addView(textView, view.childCount, params)
+        currentTextView = textView
+        currentContainer = view
 
         // Fade in
         textView.alpha = 0f
@@ -49,14 +59,31 @@ object NotificationHelper {
             .start()
 
         // Auto-dismiss after duration
-        Handler(Looper.getMainLooper()).postDelayed({
-            textView.animate()
-                .alpha(0f)
-                .setDuration(FADE_DURATION_MS)
-                .withEndAction {
-                    view.removeView(textView)
-                }
-                .start()
-        }, duration)
+        dismissRunnable =
+            Runnable {
+                textView.animate()
+                    .alpha(0f)
+                    .setDuration(FADE_DURATION_MS)
+                    .withEndAction {
+                        if (currentTextView == textView) {
+                            view.removeView(textView)
+                            currentTextView = null
+                            currentContainer = null
+                        }
+                    }
+                    .start()
+            }
+        handler.postDelayed(dismissRunnable!!, duration)
+    }
+
+    private fun removeCurrentNotification() {
+        dismissRunnable?.let { handler.removeCallbacks(it) }
+        currentTextView?.let { textView ->
+            textView.animate().cancel()
+            currentContainer?.removeView(textView)
+        }
+        currentTextView = null
+        currentContainer = null
+        dismissRunnable = null
     }
 }
