@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.view.isVisible
 import com.neilturner.aerialviews.R
 import com.neilturner.aerialviews.data.PlaylistCacheRepository
@@ -41,10 +40,10 @@ import com.neilturner.aerialviews.ui.core.VideoPlayerView.OnVideoPlayerEventList
 import com.neilturner.aerialviews.ui.helpers.ColourHelper
 import com.neilturner.aerialviews.ui.helpers.FontHelper
 import com.neilturner.aerialviews.ui.helpers.GradientHelper
+import com.neilturner.aerialviews.ui.helpers.NotificationHelper
 import com.neilturner.aerialviews.ui.helpers.OverlayHelper
 import com.neilturner.aerialviews.ui.helpers.PermissionHelper
 import com.neilturner.aerialviews.ui.helpers.RefreshRateHelper
-import com.neilturner.aerialviews.ui.helpers.ToastHelper
 import com.neilturner.aerialviews.ui.helpers.WindowHelper
 import com.neilturner.aerialviews.ui.overlays.MessageOverlay
 import com.neilturner.aerialviews.ui.overlays.MetadataOverlay
@@ -796,10 +795,8 @@ class ScreenController(
             view.visibility = View.VISIBLE
         }
 
-        // Show toast
-        mainScope.launch {
-            ToastHelper.show(context, "Brightness: $newBrightness%")
-        }
+        // Show notification
+        NotificationHelper.show(this.view as ViewGroup, "Brightness: $newBrightness%")
     }
 
     fun toggleMute() {
@@ -863,7 +860,7 @@ class ScreenController(
 
     private fun handlePlaybackSpeedChanged() {
         val message = resources.getString(R.string.playlist_playback_speed_changed, GeneralPrefs.playbackSpeed + "x")
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        NotificationHelper.show(view as ViewGroup, message)
     }
 
     override fun onVideoPlaybackSpeedChanged() = handlePlaybackSpeedChanged()
